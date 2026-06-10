@@ -1,0 +1,168 @@
+package com.finsure.controller;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.finsure.dto.AccountRequestDTO;
+import com.finsure.service.AccountServiceImpl;
+
+import jakarta.validation.Valid;
+
+@RestController
+@RequestMapping("/accounts")
+public class AccountController {
+
+    @Autowired
+    private AccountServiceImpl accountService;
+
+    // Only TELLER or ADMIN can create accounts
+    @PostMapping
+    public ResponseEntity<?> createAccount(
+            @RequestHeader("X-User-Role") String role,
+            @Valid @RequestBody AccountRequestDTO dto) {
+
+        if (!role.equals("TELLER") && !role.equals("ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Only TELLER or ADMIN can create accounts");
+        }
+        return new ResponseEntity<>(accountService.createAccount(dto), HttpStatus.CREATED);
+    }
+
+    // BRANCH_MANAGER, ADMIN, AUDITOR can view all accounts
+    @GetMapping
+    public ResponseEntity<?> getAllAccounts(
+            @RequestHeader("X-User-Role") String role) {
+
+        if (!role.equals("BRANCH_MANAGER") && !role.equals("ADMIN")
+                && !role.equals("AUDITOR")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Insufficient role");
+        }
+        return new ResponseEntity<>(accountService.getAllAccounts(), HttpStatus.OK);
+    }
+
+    // TELLER, MEMBER, LOAN_OFFICER, ADMIN can view specific account
+    @GetMapping("/{accountId}")
+    public ResponseEntity<?> getAccountById(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable Long accountId) {
+
+        if (!role.equals("TELLER") && !role.equals("MEMBER")
+                && !role.equals("LOAN_OFFICER") && !role.equals("ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Insufficient role");
+        }
+        return new ResponseEntity<>(accountService.getAccountById(accountId), HttpStatus.OK);
+    }
+
+    // TELLER, ADMIN, MEMBER, BRANCH_MANAGER can view accounts by member
+    @GetMapping("/member/{memberId}")
+    public ResponseEntity<?> getAccountsByMemberId(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable Long memberId) {
+
+        if (!role.equals("TELLER") && !role.equals("ADMIN")
+                && !role.equals("MEMBER") && !role.equals("BRANCH_MANAGER")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Insufficient role");
+        }
+        return new ResponseEntity<>(
+                accountService.getAccountsByMemberId(memberId), HttpStatus.OK);
+    }
+
+    // Only TELLER or ADMIN can update accounts
+    @PutMapping("/{accountId}")
+    public ResponseEntity<?> updateAccountById(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable Long accountId,
+            @Valid @RequestBody AccountRequestDTO dto) {
+
+        if (!role.equals("TELLER") && !role.equals("ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Only TELLER or ADMIN can update accounts");
+        }
+        return new ResponseEntity<>(
+                accountService.updateAccountById(accountId, dto), HttpStatus.ACCEPTED);
+    }
+
+    // Only ADMIN can delete accounts
+    @DeleteMapping("/{accountId}")
+    public ResponseEntity<?> deleteAccountById(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable Long accountId) {
+
+        if (!role.equals("ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Only ADMIN can delete accounts");
+        }
+        return new ResponseEntity<>(
+                accountService.deleteAccountById(accountId), HttpStatus.OK);
+    }
+ // CUSTOMER fetches only their own accounts using username mapping
+    @GetMapping("/my-accounts")
+    public ResponseEntity<?> getMyAccounts(
+            @RequestHeader("X-User-Role") String role,
+            @RequestHeader("X-User-Email") String email) {
+
+        if (!role.equals("CUSTOMER")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("This endpoint is for CUSTOMER role only");
+        }
+        // Use email/username to find member
+        return ResponseEntity.ok(
+                accountService.getAccountsByUsername(email));
+    }
+ // -------------------------------------------------------
+ // INTERNAL ENDPOINTS - For Feign calls from Transaction-Service
+ // -------------------------------------------------------
+
+ // Get account by ID - called by Transaction-Service
+ @GetMapping("/internal/{accountId}")
+ public ResponseEntity<?> getAccountByIdInternal(
+         @RequestHeader(value = "X-Internal-Call", required = false) String internalCall,
+         @PathVariable Long accountId) {
+
+     if (!"true".equals(internalCall)) {
+         return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                 .body("Access Denied: Internal endpoint only");
+     }
+     return ResponseEntity.ok(accountService.getAccountById(accountId));
+ }
+
+ // Update account balance - called by Transaction-Service after deposit/withdrawal
+ @PutMapping("/internal/balance/{accountId}")
+ public ResponseEntity<?> updateAccountBalanceInternal(
+         @RequestHeader(value = "X-Internal-Call", required = false) String internalCall,
+         @PathVariable Long accountId,
+         @RequestParam double newBalance) {
+
+     if (!"true".equals(internalCall)) {
+         return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                 .body("Access Denied: Internal endpoint only");
+     }
+     return ResponseEntity.ok(
+             accountService.updateAccountBalance(accountId, newBalance));
+ }
+ @GetMapping("/internal/all")
+ public ResponseEntity<?> getAllAccountsInternal(
+         @RequestHeader(value = "X-Internal-Call", required = false)
+         String internalCall) {
+
+     if (!"true".equals(internalCall)) {
+         return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                 .body("Access Denied: Internal endpoint only");
+     }
+     return ResponseEntity.ok(accountService.getAllAccounts());
+ }
+}

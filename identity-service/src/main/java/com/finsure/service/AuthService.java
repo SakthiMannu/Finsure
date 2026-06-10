@@ -1,0 +1,13 @@
+package com.finsure.service;
+
+import com.finsure.dto.CreateUserRequest;
+import com.finsure.dto.ForgotPasswordRequest;
+
+import com.finsure.dto.LoginRequest;
+import com.finsure.dto.LoginResponse;
+
+public interface AuthService {
+    String createUser(CreateUserRequest request);
+    LoginResponse login(LoginRequest request);
+    String forgotPassword(ForgotPasswordRequest request);
+}

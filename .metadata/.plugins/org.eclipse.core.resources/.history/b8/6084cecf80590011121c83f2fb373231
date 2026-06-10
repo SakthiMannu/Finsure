@@ -1,0 +1,45 @@
+package com.finsure.controller;
+
+import com.finsure.service.LoanApprovalServiceImpl;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/loan-approval")
+public class LoanApprovalController {
+
+    @Autowired
+    private LoanApprovalServiceImpl approvalService;
+
+    // Only LOAN_OFFICER or ADMIN can approve loans
+    @PutMapping("/approve/{loanId}")
+    public ResponseEntity<?> approveLoan(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable Long loanId,
+            @RequestParam String approvedBy) {
+
+        if (!role.equals("LOAN_OFFICER") && !role.equals("ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Only LOAN_OFFICER or ADMIN can approve loans");
+        }
+        return new ResponseEntity<>(
+                approvalService.approveLoan(loanId, approvedBy), HttpStatus.ACCEPTED);
+    }
+
+    // Only LOAN_OFFICER or ADMIN can reject loans
+    @PutMapping("/reject/{loanId}")
+    public ResponseEntity<?> rejectLoan(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable Long loanId,
+            @RequestParam String approvedBy,
+            @RequestParam String reason) {
+
+        if (!role.equals("LOAN_OFFICER") && !role.equals("ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Only LOAN_OFFICER or ADMIN can reject loans");
+        }
+        return new ResponseEntity<>(
+                approvalService.rejectLoan(loanId, approvedBy, reason), HttpStatus.OK);
+    }
+}

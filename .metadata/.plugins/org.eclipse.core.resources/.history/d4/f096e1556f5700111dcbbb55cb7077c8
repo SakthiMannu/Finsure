@@ -1,0 +1,22 @@
+package com.finsure.repository;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+
+import com.finsure.entity.Account;
+
+public interface AccountRepository extends JpaRepository<Account, Long> {
+
+    // Get all accounts belonging to a member
+    List<Account> findByMember_MemberId(Long memberId);
+
+    // Used by Transaction-Service via Feign to get account by memberId
+    Optional<Account> findFirstByMember_MemberId(Long memberId);
+    
+    @Query("SELECT COUNT(a) FROM Account a " +
+    	       "WHERE a.status = 'ACTIVE'")
+    	long countActiveAccounts();
+}

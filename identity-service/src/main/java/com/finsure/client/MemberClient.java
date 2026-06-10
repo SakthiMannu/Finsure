@@ -1,0 +1,13 @@
+package com.finsure.client;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+@FeignClient(name = "MEMBER-SERVICE",
+        configuration = FeignClientConfig.class)
+public interface MemberClient {
+
+    @GetMapping("/members/internal/by-name")
+    Long getMemberIdByName(@RequestParam String name);
+}

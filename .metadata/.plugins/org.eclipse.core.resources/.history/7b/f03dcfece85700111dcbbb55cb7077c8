@@ -1,0 +1,213 @@
+package com.finsure.controller;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.finsure.dto.LoanApplicationRequestDTO;
+import com.finsure.repository.LoanApplicationRepository;
+import com.finsure.service.LoanApplicationServiceImpl;
+
+import jakarta.validation.Valid;
+
+@RestController
+@RequestMapping("/loans")
+public class LoanApplicationController {
+
+    @Autowired
+    private LoanApplicationServiceImpl loanService;
+    
+    @Autowired
+    private LoanApplicationRepository loanRepo;
+
+    @PostMapping
+    public ResponseEntity<?> createLoanApplication(
+            @RequestHeader("X-User-Role") String role,
+            @RequestHeader("X-User-Email") String email,
+            @Valid @RequestBody LoanApplicationRequestDTO dto) {
+
+        if (!role.equals("ADMIN") && !role.equals("TELLER")
+                && !role.equals("LOAN_OFFICER")
+                && !role.equals("CUSTOMER")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied");
+        }
+
+        // CUSTOMER can only apply for their own memberId
+        if (role.equals("CUSTOMER")) {
+            Long linkedMemberId = loanService.getMemberIdByEmail(email);
+            if (linkedMemberId == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("No member linked to your account. "
+                            + "Contact your branch.");
+            }
+            if (!linkedMemberId.equals(dto.getMemberId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("You can only apply for your own member ID");
+            }
+        }
+
+        return new ResponseEntity<>(
+                loanService.createLoanApplication(dto),
+                HttpStatus.CREATED);
+    }
+
+    @GetMapping
+    public ResponseEntity<?> getAllLoanApplications(
+            @RequestHeader("X-User-Role") String role) {
+
+        if (!role.equals("LOAN_OFFICER") && !role.equals("BRANCH_MANAGER")
+                && !role.equals("ADMIN") && !role.equals("AUDITOR")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Insufficient role");
+        }
+        return new ResponseEntity<>(
+                loanService.getAllLoanApplications(), HttpStatus.OK);
+    }
+
+    @GetMapping("/{loanId}")
+    public ResponseEntity<?> getLoanApplicationById(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable Long loanId) {
+
+        if (!role.equals("MEMBER") && !role.equals("TELLER")
+                && !role.equals("LOAN_OFFICER") && !role.equals("BRANCH_MANAGER")
+                && !role.equals("ADMIN") && !role.equals("AUDITOR")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Insufficient role");
+        }
+        return new ResponseEntity<>(
+                loanService.getLoanApplicationById(loanId), HttpStatus.OK);
+    }
+
+    @GetMapping("/member/{memberId}")
+    public ResponseEntity<?> getLoansByMemberId(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable Long memberId) {
+
+        if (!role.equals("MEMBER") && !role.equals("LOAN_OFFICER")
+                && !role.equals("BRANCH_MANAGER") && !role.equals("ADMIN")
+                && !role.equals("AUDITOR")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Insufficient role");
+        }
+        return new ResponseEntity<>(
+                loanService.getLoanApplicationsByMemberId(memberId), HttpStatus.OK);
+    }
+
+    @PutMapping("/{loanId}")
+    public ResponseEntity<?> updateLoanApplication(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable Long loanId,
+            @Valid @RequestBody LoanApplicationRequestDTO dto) {
+
+        if (!role.equals("LOAN_OFFICER") && !role.equals("ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Only LOAN_OFFICER or ADMIN can update loans");
+        }
+        return new ResponseEntity<>(
+                loanService.updateLoanApplication(loanId, dto), HttpStatus.ACCEPTED);
+    }
+
+    // -------------------------------------------------------
+    // INTERNAL ENDPOINT - For Feign calls from other services
+    // -------------------------------------------------------
+    // Called by Repayment-Service to verify loan exists
+    // and check loan status before accepting repayment
+    @GetMapping("/internal/{loanId}")
+    public ResponseEntity<?> getLoanByIdInternal(
+            @RequestHeader(value = "X-Internal-Call", required = false) String internalCall,
+            @PathVariable Long loanId) {
+
+        if (!"true".equals(internalCall)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Internal endpoint only");
+        }
+        return ResponseEntity.ok(loanService.getLoanApplicationById(loanId));
+    }
+    @GetMapping("/internal/all")
+    public ResponseEntity<?> getAllLoansInternal(
+            @RequestHeader(value = "X-Internal-Call", required = false)
+            String internalCall) {
+
+        if (!"true".equals(internalCall)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Internal endpoint only");
+        }
+        return ResponseEntity.ok(loanService.getAllLoanApplications());
+    }
+ // Add this to LoanApplicationController in Loan-Service
+ // Returns all APPROVED loans where nextDueDate is before today
+ @GetMapping("/internal/overdue")
+ public ResponseEntity<?> getOverdueLoansInternal(
+         @RequestHeader(value = "X-Internal-Call", required = false)
+         String internalCall) {
+
+     if (!"true".equals(internalCall)) {
+         return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                 .body("Access Denied: Internal endpoint only");
+     }
+     return ResponseEntity.ok(loanService.getOverdueLoans());
+ }
+//Add to LoanApplicationController in Loan-Service
+@PutMapping("/internal/update-due-date/{loanId}")
+public ResponseEntity<?> updateNextDueDate(
+      @RequestHeader(value = "X-Internal-Call", required = false)
+      String internalCall,
+      @PathVariable Long loanId) {
+
+  if (!"true".equals(internalCall)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN)
+              .body("Access Denied: Internal endpoint only");
+  }
+  loanService.pushNextDueDate(loanId);
+  return ResponseEntity.ok("Due date updated");
+}
+//Returns loans submitted between two dates
+//Called by Reporting-Service when generating audit package
+@GetMapping("/loans/internal/period-filter")
+public ResponseEntity<?> getLoansByPeriodInternal(
+     @RequestHeader(value = "X-Internal-Call",
+             required = false) String internalCall,
+     @RequestParam @DateTimeFormat(
+             iso = DateTimeFormat.ISO.DATE_TIME)
+             LocalDateTime start,
+     @RequestParam @DateTimeFormat(
+             iso = DateTimeFormat.ISO.DATE_TIME)
+             LocalDateTime end) {
+
+ if (!"true".equals(internalCall)) {
+     return ResponseEntity.status(HttpStatus.FORBIDDEN)
+             .body("Access Denied: Internal endpoint only");
+ }
+ return ResponseEntity.ok(
+         loanService.getLoansByPeriod(start, end));
+}
+@GetMapping("/loans/internal/stats")
+public ResponseEntity<?> getLoanStatsInternal(
+        @RequestHeader(value = "X-Internal-Call",
+                       required = false) String ic) {
+    if (!"true".equals(ic)) {
+        return ResponseEntity.status(403).body("Denied");
+    }
+    Map<String, Long> stats = new HashMap<>();
+    stats.put("total", loanRepo.countAllLoans());
+    stats.put("approved", loanRepo.countApprovedLoans());
+    stats.put("pending", loanRepo.countPendingLoans());
+    return ResponseEntity.ok(stats);
+}
+}

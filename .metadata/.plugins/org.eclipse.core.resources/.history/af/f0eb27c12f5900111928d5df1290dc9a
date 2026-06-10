@@ -1,0 +1,74 @@
+// Add this to a new file GlobalAuthHeaderFilter.java in api-gateway
+package com.finsure.filter;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import reactor.core.publisher.Mono;
+import java.security.Key;
+
+@Configuration
+public class GlobalAuthHeaderFilter {
+
+    @Value("${app.jwt.secret}")
+    private String secret;
+
+    private Key key;
+
+    @PostConstruct
+    private void init() {
+        this.key = Keys.hmacShaKeyFor(secret.getBytes());
+    }
+
+    @Bean
+    public GlobalFilter injectUserHeadersGlobally() {
+        return (exchange, chain) -> {
+            String authHeader = exchange.getRequest()
+                    .getHeaders()
+                    .getFirst("Authorization");
+
+            if (authHeader != null
+                    && authHeader.startsWith("Bearer ")) {
+                try {
+                    String token = authHeader.substring(7);
+                    Claims claims = Jwts.parser()
+                            .verifyWith(
+                                (javax.crypto.SecretKey) key)
+                            .build()
+                            .parseSignedClaims(token)
+                            .getPayload();
+
+                    String role = claims.get(
+                            "role", String.class);
+                    String email = claims.getSubject();
+
+                    ServerHttpRequest mutated = exchange
+                            .getRequest()
+                            .mutate()
+                            .header("X-User-Role",
+                                    role != null ? role : "")
+                            .header("X-User-Email",
+                                    email != null ? email : "")
+                            .build();
+
+                    return chain.filter(
+                            exchange.mutate()
+                                    .request(mutated)
+                                    .build());
+                } catch (Exception e) {
+                    // Token invalid — let the route-level
+                    // JwtAuthFilter handle rejection
+                }
+            }
+
+            return chain.filter(exchange);
+        };
+    }
+}

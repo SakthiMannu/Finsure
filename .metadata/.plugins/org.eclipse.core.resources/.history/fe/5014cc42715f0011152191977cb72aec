@@ -1,0 +1,236 @@
+package com.finsure.service;
+
+import com.finsure.client.MemberClient;
+import com.finsure.client.ReportingClient;
+import com.finsure.dto.*;
+import com.finsure.entity.LoanApplication;
+import com.finsure.exception.LoanNotFoundException;
+import com.finsure.exception.MemberNotFoundException;
+import com.finsure.mapper.LoanApplicationMapper;
+import com.finsure.repository.LoanApplicationRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class LoanApplicationServiceImpl implements LoanApplicationService {
+
+    @Autowired
+    private LoanApplicationRepository loanRepo;
+
+    @Autowired
+    private LoanApplicationMapper loanMapper;
+
+    @Autowired
+    private MemberClient memberClient;
+
+    @Autowired
+    private ReportingClient reportingClient;
+
+    @Transactional
+    @CircuitBreaker(name = "default", fallbackMethod = "createLoanFallback")
+    @Retry(name = "default")
+    public LoanApplicationResponseDTO createLoanApplication(
+            LoanApplicationRequestDTO dto) {
+        try {
+            MemberDTO member = memberClient.getMemberById(
+                    dto.getMemberId());
+            if (member == null) {
+                throw new MemberNotFoundException(
+                        "No Member found with ID: "
+                        + dto.getMemberId()
+                        + ". Please enter a valid Member ID.");
+            }
+        } catch (feign.FeignException.NotFound e) {
+            throw new MemberNotFoundException(
+                    "No Member found with ID: "
+                    + dto.getMemberId()
+                    + ". Please enter a valid Member ID.");
+        } catch (MemberNotFoundException e) {
+            throw e;
+        } catch (feign.FeignException e) {
+            throw new RuntimeException(
+                    "Member service error. Please try again.");
+        }
+
+        LoanApplication loan = loanMapper.toEntity(dto);
+        loan.setStatus("PENDING");
+        loan.setSubmittedAt(LocalDate.now());
+        loan.setPurpose(dto.getPurpose());
+        if ("Other".equals(dto.getPurpose())
+                && dto.getCustomPurpose() != null
+                && !dto.getCustomPurpose().isBlank()) {
+            loan.setCustomPurpose(dto.getCustomPurpose());
+        }
+
+        LoanApplication savedLoan = loanRepo.save(loan);
+
+        try {
+            TaskRequestDTO task = new TaskRequestDTO();
+            task.setAssignedToUserId(1L);
+            task.setRelatedEntityId(savedLoan.getLoanId());
+            task.setDescription("Please review and approve/reject the Loan ID:"+savedLoan.getLoanId()
+                    +" for Member ID:"+savedLoan.getMemberId()+
+                    " Amount: Rs." + savedLoan.getAmount());
+            task.setDueDate(LocalDate.now().plusDays(3));
+            reportingClient.createTask(task);
+        } catch (Exception e) {
+            System.out.println("Task creation failed for loan "
+                    + savedLoan.getLoanId() + ": " + e.getMessage());
+        }
+
+        return loanMapper.toResponseDTO(savedLoan);
+    }
+
+
+
+    public LoanApplicationResponseDTO createLoanFallback(
+            LoanApplicationRequestDTO dto, Throwable ex) {
+
+
+        if (ex instanceof MemberNotFoundException) {
+            throw (MemberNotFoundException) ex;
+        }
+        if (ex instanceof RuntimeException
+                && ex.getMessage() != null
+                && (ex.getMessage().contains("No Member found")
+                    || ex.getMessage().contains("valid Member ID")
+                    || ex.getMessage().contains("Member Not Found"))) {
+            throw (RuntimeException) ex;
+        }
+
+
+        throw new RuntimeException(
+                "Loan service is currently unavailable. "
+                + "Please try again in a few minutes.");
+    }
+
+    public List<LoanApplicationResponseDTO> getAllLoanApplications() {
+        return loanRepo.findAll().stream()
+                .map(loanMapper::toResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    @CircuitBreaker(name = "default",
+            fallbackMethod = "getLoansByMemberFallback")
+    @Retry(name = "default")
+    public List<LoanApplicationResponseDTO> getLoanApplicationsByMemberId(
+            Long memberId) {
+
+        try {
+            MemberDTO member = memberClient.getMemberById(memberId);
+            if (member == null) {
+                throw new MemberNotFoundException(
+                        "Member Not Found With ID: " + memberId);
+            }
+        } catch (feign.FeignException.NotFound e) {
+            throw new MemberNotFoundException(
+                    "No Member found with ID: " + memberId);
+        } catch (MemberNotFoundException e) {
+            throw e;
+        } catch (feign.FeignException e) {
+            throw new RuntimeException(
+                    "Member service error. Please try again.");
+        }
+
+        List<LoanApplication> loans = loanRepo.findByMemberId(memberId);
+        if (loans.isEmpty()) {
+            throw new LoanNotFoundException(
+                    "No Loans Found For Member ID: " + memberId);
+        }
+
+        return loans.stream()
+                .map(loanMapper::toResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<LoanApplicationResponseDTO> getLoansByMemberFallback(
+            Long memberId, Throwable ex) {
+
+        if (ex instanceof MemberNotFoundException) {
+            throw (MemberNotFoundException) ex;
+        }
+        if (ex instanceof LoanNotFoundException) {
+            throw (LoanNotFoundException) ex;
+        }
+        throw new RuntimeException(
+                "Member Service is currently unavailable. "
+                + "Cannot fetch loans for member ID: " + memberId);
+    }
+
+    public LoanApplicationResponseDTO getLoanApplicationById(Long loanId) {
+        LoanApplication loan = loanRepo.findById(loanId)
+                .orElseThrow(() -> new LoanNotFoundException(
+                        "No Loan Found With ID: " + loanId));
+        return loanMapper.toResponseDTO(loan);
+    }
+
+    @Transactional
+    public LoanApplicationResponseDTO updateLoanApplication(
+            Long loanId, LoanApplicationRequestDTO dto) {
+
+        LoanApplication loan = loanRepo.findById(loanId)
+                .orElseThrow(() -> new LoanNotFoundException(
+                        "No Loan Found With ID: " + loanId));
+        loan.setAmount(dto.getAmount());
+        loan.setPurpose(dto.getPurpose());
+        return loanMapper.toResponseDTO(loanRepo.save(loan));
+    }
+
+    public List<LoanApplicationResponseDTO> getOverdueLoans() {
+        return loanRepo.findByStatusAndNextDueDateBefore(
+                        "APPROVED", LocalDate.now())
+                .stream()
+                .map(loanMapper::toResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void pushNextDueDate(Long loanId) {
+        LoanApplication loan = loanRepo.findById(loanId)
+                .orElseThrow(() -> new LoanNotFoundException(
+                        "Loan not found with ID: " + loanId));
+
+        LocalDate currentDue = loan.getNextDueDate();
+        if (currentDue != null) {
+            loan.setNextDueDate(currentDue.plusMonths(1));
+        } else {
+            loan.setNextDueDate(LocalDate.now().plusMonths(1));
+        }
+        loanRepo.save(loan);
+    }
+
+    public List<LoanApplicationResponseDTO> getLoansByPeriod(
+            LocalDateTime start, LocalDateTime end) {
+        return loanRepo.findBySubmittedAtBetween(
+                        start.toLocalDate(),
+                        end.toLocalDate())
+                .stream()
+                .map(loanMapper::toResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+
+    @Transactional
+    public void closeLoan(Long loanId) {
+        LoanApplication loan = loanRepo.findById(loanId)
+                .orElseThrow(() -> new LoanNotFoundException(
+                        "Loan not found with ID: " + loanId));
+
+        if (!loan.getStatus().equals("APPROVED")) {
+            throw new RuntimeException(
+                    "Loan ID: " + loanId
+                    + " cannot be closed. Current status: "
+                    + loan.getStatus());
+        }
+
+        loan.setStatus("CLOSED");
+        loanRepo.save(loan);
+    }
+}

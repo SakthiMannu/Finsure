@@ -1,0 +1,243 @@
+package com.finsure.service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.finsure.client.LoanClient;
+import com.finsure.client.ReportingClient;
+import com.finsure.dto.LoanDTO;
+import com.finsure.dto.NotificationRequestDTO;
+import com.finsure.dto.RepaymentRequestDTO;
+import com.finsure.dto.RepaymentResponseDTO;
+import com.finsure.entity.RepaymentEntity;
+import com.finsure.exception.InsufficientRepaymentAmountException;
+import com.finsure.exception.InvalidLoanIdException;
+import com.finsure.exception.InvalidRepaymentIdException;
+import com.finsure.repository.RepaymentRepository;
+import com.finsure.util.EmiCalculator;
+
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+
+@Service
+public class RepaymentServiceImpl implements RepaymentService {
+
+    @Autowired
+    private RepaymentRepository repaymentRepo;
+
+    @Autowired
+    private LoanClient loanClient;
+
+    @Autowired
+    private ReportingClient reportingClient;
+
+    @Transactional
+    @CircuitBreaker(name = "default", fallbackMethod = "createRepaymentFallback")
+    @Retry(name = "default")
+    public RepaymentResponseDTO createRepayment(RepaymentRequestDTO dto) {
+
+        LoanDTO loan = loanClient.getLoanById(dto.getLoanId());
+        if (loan == null) {
+            throw new InvalidLoanIdException(
+                    "Loan Not Found With ID: " + dto.getLoanId());
+        }
+
+        if (!loan.getStatus().equals("APPROVED")) {
+            throw new RuntimeException(
+                    "Repayment can only be made for APPROVED loans. "
+                            + "Current status: " + loan.getStatus());
+        }
+
+        double emiAmount      = EmiCalculator.calculateMonthlyEmi(loan.getAmount());
+        double totalRepayable = Math.round(emiAmount * 12 * 100.0) / 100.0;
+
+        Double sumPaidRaw       = repaymentRepo.sumPaidAmountByLoanId(dto.getLoanId());
+        double sumPaid          = (sumPaidRaw != null) ? sumPaidRaw : 0.0;
+        double remainingBalance = Math.round((totalRepayable - sumPaid) * 100.0) / 100.0;
+
+        double minimumAccepted = (remainingBalance < emiAmount)
+                ? remainingBalance : emiAmount;
+        minimumAccepted = Math.round(minimumAccepted * 100.0) / 100.0;
+
+        if (dto.getAmount() < minimumAccepted) {
+            throw new InsufficientRepaymentAmountException(
+                    "Minimum repayment amount is Rs. " + minimumAccepted
+                            + ". Paid amount Rs. " + dto.getAmount()
+                            + " is insufficient.");
+        }
+
+        if (dto.getAmount() > remainingBalance) {
+            throw new InsufficientRepaymentAmountException(
+                    "Payment of Rs." + dto.getAmount()
+                            + " exceeds remaining balance of Rs."
+                            + remainingBalance
+                            + ". Please pay exactly Rs."
+                            + minimumAccepted + " as your EMI.");
+        }
+
+        RepaymentEntity entity = new RepaymentEntity();
+        entity.setLoanId(dto.getLoanId());
+        entity.setAmount(dto.getAmount());
+        entity.setMethod(dto.getMethod().toUpperCase());
+        entity.setStatus(dto.getStatus().toUpperCase());
+        entity.setPaidAt(LocalDateTime.now());
+
+        RepaymentEntity saved = repaymentRepo.save(entity);
+
+        double newRemaining = Math.round(
+                (remainingBalance - dto.getAmount()) * 100.0) / 100.0;
+
+        if (newRemaining < 1) {
+
+            try {
+                loanClient.closeLoan(dto.getLoanId());
+            } catch (Exception e) {
+                System.out.println("Loan closure failed: " + e.getMessage());
+            }
+
+            try {
+                NotificationRequestDTO notification =
+                        new NotificationRequestDTO();
+                notification.setUserId(loan.getMemberId());
+                notification.setEntityId(dto.getLoanId());
+                notification.setMessage(
+                        "Congratulations! Your loan (ID: "
+                                + dto.getLoanId()
+                                + ") has been fully repaid. Total paid: Rs."
+                                + totalRepayable
+                                + ". Your loan is now CLOSED.");
+                notification.setCategory("LOAN");
+                reportingClient.createNotification(notification);
+            } catch (Exception e) {
+                System.out.println(
+                        "Closure notification failed: " + e.getMessage());
+            }
+
+        } else {
+
+            try {
+                loanClient.updateNextDueDate(dto.getLoanId());
+            } catch (Exception e) {
+                System.out.println(
+                        "Due date update failed: " + e.getMessage());
+            }
+
+            try {
+                NotificationRequestDTO notification =
+                        new NotificationRequestDTO();
+                notification.setUserId(loan.getMemberId());
+                notification.setEntityId(dto.getLoanId());
+                notification.setMessage(
+                        "Repayment of Rs." + dto.getAmount()
+                                + " received via "
+                                + dto.getMethod().toUpperCase()
+                                + " for Loan ID: " + dto.getLoanId()
+                                + ". Remaining balance: Rs."
+                                + newRemaining
+                                + ". Next due date updated.");
+                notification.setCategory("LOAN");
+                reportingClient.createNotification(notification);
+            } catch (Exception e) {
+                System.out.println(
+                        "Notification failed: " + e.getMessage());
+            }
+        }
+
+        return mapToResponseDTO(saved);
+    }
+
+    public List<RepaymentResponseDTO> getAllRepayments() {
+        return repaymentRepo.findAll()
+                .stream()
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<RepaymentResponseDTO> getRepaymentsByPeriod(
+            LocalDateTime start, LocalDateTime end) {
+        return repaymentRepo.findByPaidAtBetween(start, end)
+                .stream()
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<RepaymentResponseDTO> getRepaymentHistory(Long loanId) {
+        List<RepaymentEntity> entities =
+                repaymentRepo.findByLoanId(loanId);
+        if (entities.isEmpty()) {
+            throw new InvalidLoanIdException(
+                    "No Repayments Found For Loan ID: " + loanId);
+        }
+        return entities.stream()
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    public RepaymentResponseDTO getRepaymentById(Long repaymentId) {
+        RepaymentEntity entity = repaymentRepo.findById(repaymentId)
+                .orElseThrow(() -> new InvalidRepaymentIdException(
+                        "Repayment Not Found With ID: " + repaymentId));
+        return mapToResponseDTO(entity);
+    }
+
+    @Transactional
+    public RepaymentResponseDTO updateRepaymentById(
+            Long repaymentId, RepaymentRequestDTO dto) {
+
+        RepaymentEntity entity = repaymentRepo.findById(repaymentId)
+                .orElseThrow(() -> new InvalidRepaymentIdException(
+                        "Repayment Not Found With ID: " + repaymentId));
+
+        entity.setAmount(dto.getAmount());
+        entity.setMethod(dto.getMethod().toUpperCase());
+        entity.setStatus(dto.getStatus().toUpperCase());
+        entity.setPaidAt(LocalDateTime.now());
+
+        return mapToResponseDTO(repaymentRepo.save(entity));
+    }
+
+    @Transactional
+    public String deleteRepaymentById(Long repaymentId) {
+        if (!repaymentRepo.existsById(repaymentId)) {
+            throw new InvalidRepaymentIdException(
+                    "Repayment Not Found With ID: " + repaymentId);
+        }
+        repaymentRepo.deleteById(repaymentId);
+        return "Repayment ID: " + repaymentId + " Deleted Successfully";
+    }
+
+    private RepaymentResponseDTO mapToResponseDTO(RepaymentEntity entity) {
+        RepaymentResponseDTO dto = new RepaymentResponseDTO();
+        dto.setRepaymentId(entity.getRepaymentId());
+        dto.setLoanId(entity.getLoanId());
+        dto.setAmount(entity.getAmount());
+        dto.setPaidAt(entity.getPaidAt());
+        dto.setMethod(entity.getMethod());
+        dto.setStatus(entity.getStatus());
+        return dto;
+    }
+
+    public RepaymentResponseDTO createRepaymentFallback(
+            RepaymentRequestDTO dto, Throwable ex) {
+        if (ex instanceof InsufficientRepaymentAmountException) {
+            throw (InsufficientRepaymentAmountException) ex;
+        }
+        if (ex instanceof InvalidLoanIdException) {
+            throw (InvalidLoanIdException) ex;
+        }
+        if (ex instanceof InvalidRepaymentIdException) {
+            throw (InvalidRepaymentIdException) ex;
+        }
+        if (ex instanceof RuntimeException) {
+            throw (RuntimeException) ex;
+        }
+        throw new RuntimeException(
+                "Repayment Service is currently unavailable. "
+                        + "Please try again. Error: " + ex.getMessage());
+    }
+}

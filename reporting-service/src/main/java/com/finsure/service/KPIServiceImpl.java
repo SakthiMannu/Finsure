@@ -1,0 +1,214 @@
+package com.finsure.service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.finsure.client.LoanReportClient;
+import com.finsure.client.MemberReportClient;
+import com.finsure.client.TransactionReportClient;
+import com.finsure.dto.AccountReportDTO;
+import com.finsure.dto.KPIDTO;
+import com.finsure.dto.LoanReportDTO;
+import com.finsure.dto.TransactionReportDTO;
+import com.finsure.entity.KPI;
+import com.finsure.exception.ResourceNotFoundException;
+import com.finsure.repository.KPIRepository;
+
+@Service
+public class KPIServiceImpl implements KPIService {
+
+    @Autowired
+    private KPIRepository kpiRepo;
+    
+    @Autowired
+    private LoanReportClient loanClient;
+    
+    @Autowired
+    private MemberReportClient memberClient;
+    
+    @Autowired
+    private TransactionReportClient transactionClient;
+    
+    
+
+
+    public KPIDTO calculateKPI(String category) {
+
+        KPI kpi = new KPI();
+        kpi.setCategory(category.toUpperCase());
+        kpi.setReportingPeriod(LocalDateTime.now());
+
+        switch (category.toUpperCase()) {
+
+            case "LOANS" -> {
+                Map<String, Long> stats =
+                        loanClient.getLoanStats();
+                long total = stats.getOrDefault("total", 0L);
+                long approved = stats.getOrDefault("approved", 0L);
+                double rate = total > 0
+                        ? Math.round((approved * 100.0 / total)
+                                * 10.0) / 10.0
+                        : 0.0;
+                kpi.setName("Loan Approval Rate");
+                kpi.setDefinition(
+                        "Percentage of loan applications approved");
+                kpi.setTarget(85.0);
+                kpi.setCurrentValue(rate);
+            }
+
+            case "ACCOUNTS" -> {
+                Map<String, Long> stats =
+                        memberClient.getAccountStats();
+                double active = stats.getOrDefault(
+                        "activeAccounts", 0L);
+                kpi.setName("Active Accounts");
+                kpi.setDefinition("Number of currently active accounts");
+                kpi.setTarget(500.0);
+                kpi.setCurrentValue(active);
+            }
+
+            case "TRANSACTIONS" -> {
+                Map<String, Object> stats =
+                        transactionClient.getTransactionStats();
+                double total = stats.getOrDefault(
+                        "totalTransactions", 0) instanceof Number n
+                        ? n.doubleValue() : 0;
+                kpi.setName("Total Transactions");
+                kpi.setDefinition(
+                        "Total number of transactions processed");
+                kpi.setTarget(1000.0);
+                kpi.setCurrentValue(total);
+            }
+
+            default -> throw new RuntimeException(
+                    "Invalid category. Use: LOANS, ACCOUNTS, "
+                    + "TRANSACTIONS");
+        }
+
+        return mapToDTO(kpiRepo.save(kpi));
+    }
+
+    public List<KPIDTO> getAllKPIs() {
+        return kpiRepo.findAll().stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<KPIDTO> getKPIsByCategory(String category) {
+        List<KPI> kpis = kpiRepo.findByCategory(category);
+        if (kpis.isEmpty()) {
+            throw new ResourceNotFoundException(
+                    "No KPIs Found For Category: " + category);
+        }
+        return kpis.stream().map(this::mapToDTO).collect(Collectors.toList());
+    }
+
+    public KPIDTO getKPIById(Long id) {
+        KPI kpi = kpiRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "KPI Not Found With ID: " + id));
+        return mapToDTO(kpi);
+    }
+
+    public KPIDTO updateKPI(Long id, KPIDTO dto) {
+        KPI kpi = kpiRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "KPI Not Found With ID: " + id));
+
+        kpi.setCurrentValue(dto.getCurrentValue());
+        kpi.setTarget(dto.getTarget());
+        kpi.setReportingPeriod(LocalDateTime.now());
+
+        return mapToDTO(kpiRepo.save(kpi));
+    }
+
+    public void deleteKPI(Long id) {
+        kpiRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "KPI Not Found With ID: " + id));
+        kpiRepo.deleteById(id);
+    }
+
+
+ public KPIDTO calculateAndSaveKPI(String category, String generatedBy) {
+
+     KPI kpi = new KPI();
+     kpi.setCategory(category.toUpperCase());
+     kpi.setReportingPeriod(LocalDateTime.now());
+
+     switch (category.toUpperCase()) {
+
+         case "LOANS" -> {
+             List<LoanReportDTO> loans = loanClient.getAllLoans();
+             long total = loans.size();
+             long approved = loans.stream()
+                     .filter(l -> l.getStatus().equals("APPROVED"))
+                     .count();
+
+             double rate = total > 0
+                     ? Math.round((approved * 100.0 / total) * 10.0) / 10.0
+                     : 0.0;
+
+             kpi.setName("Loan Approval Rate");
+             kpi.setDefinition("Percentage of loan applications approved");
+             kpi.setTarget(85.0);
+             kpi.setCurrentValue(rate);
+         }
+
+         case "ACCOUNTS" -> {
+             List<AccountReportDTO> accounts = memberClient.getAllAccounts();
+             double avgBalance = accounts.stream()
+                     .mapToDouble(AccountReportDTO::getBalance)
+                     .average()
+                     .orElse(0.0);
+
+             kpi.setName("Average Account Balance");
+             kpi.setDefinition("Average balance across all active accounts");
+             kpi.setTarget(10000.0);
+             kpi.setCurrentValue(Math.round(avgBalance * 100.0) / 100.0);
+         }
+
+         case "TRANSACTIONS" -> {
+             List<TransactionReportDTO> txns =
+                     transactionClient.getAllTransactions();
+             double totalDeposits = txns.stream()
+                     .filter(t -> t.getType().equals("DEPOSIT"))
+                     .mapToDouble(TransactionReportDTO::getAmount)
+                     .sum();
+             double totalWithdrawals = txns.stream()
+                     .filter(t -> t.getType().equals("WITHDRAWAL"))
+                     .mapToDouble(TransactionReportDTO::getAmount)
+                     .sum();
+             double netFlow = totalDeposits - totalWithdrawals;
+
+             kpi.setName("Net Cash Flow");
+             kpi.setDefinition("Total deposits minus total withdrawals");
+             kpi.setTarget(50000.0);
+             kpi.setCurrentValue(Math.round(netFlow * 100.0) / 100.0);
+         }
+
+         default -> throw new RuntimeException(
+             "Invalid category. Valid: LOANS, ACCOUNTS, TRANSACTIONS"
+         );
+     }
+
+     return mapToDTO(kpiRepo.save(kpi));
+ }
+
+    private KPIDTO mapToDTO(KPI kpi) {
+        KPIDTO dto = new KPIDTO();
+        dto.setKpiId(kpi.getKpiId());
+        dto.setName(kpi.getName());
+        dto.setDefinition(kpi.getDefinition());
+        dto.setTarget(kpi.getTarget());
+        dto.setCurrentValue(kpi.getCurrentValue());
+        dto.setReportingPeriod(kpi.getReportingPeriod());
+        dto.setCategory(kpi.getCategory());
+        return dto;
+    }
+}

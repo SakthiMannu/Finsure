@@ -1,0 +1,74 @@
+package com.finsure.service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.finsure.dto.MemberRequestDTO;
+import com.finsure.dto.MemberResponseDTO;
+
+import com.finsure.entity.Member;
+import com.finsure.exception.MemberAlreadyExistsException;
+import com.finsure.exception.MemberNotFoundException;
+import com.finsure.mapper.MemberMapper;
+import com.finsure.repository.MemberRepository;
+
+@Service
+public class MemberServiceImpl implements MemberService {
+
+    @Autowired
+    private MemberRepository memberRepo;
+
+    @Autowired
+    private MemberMapper mem_map;
+
+    @Transactional
+    public MemberResponseDTO createMember(MemberRequestDTO dto) {
+
+        // Prevent duplicate members with same name and date of birth
+        if (memberRepo.existsByNameAndDob(dto.getName(), dto.getDob())) {
+            throw new MemberAlreadyExistsException("Member Already Present !!!!");
+        }
+
+        Member m = mem_map.toEntity(dto);
+        m.setStatus("ACTIVE");
+        Member saved=memberRepo.save(m);
+      
+        return mem_map.toResponseDTO(saved);
+    }
+
+    public List<MemberResponseDTO> getAllMembers() {
+        return memberRepo.findAll()
+                .stream()
+                .map(mem_map::toResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    public MemberResponseDTO getMemberById(Long id) {
+        Member mem = memberRepo.findById(id)
+                .orElseThrow(() -> new MemberNotFoundException("Member Not Found With ID: " + id));
+        return mem_map.toResponseDTO(mem);
+    }
+
+    @Transactional
+    public MemberResponseDTO updateMember(Long id, MemberRequestDTO dto) {
+        Member mem = memberRepo.findById(id)
+                .orElseThrow(() -> new MemberNotFoundException("Member not found with ID: " + id));
+
+        mem.setName(dto.getName());
+        mem.setDob(dto.getDob());
+        mem.setContactInfo(dto.getContactInfo());
+
+        return mem_map.toResponseDTO(memberRepo.save(mem));
+    }
+    public Member getMemberByEmail(String email) {
+        // Members are linked to users via contactInfo storing email
+        return memberRepo.findByContactInfo(email)
+                .orElseThrow(() -> new RuntimeException(
+                        "No member linked to email: " + email));
+    }
+}

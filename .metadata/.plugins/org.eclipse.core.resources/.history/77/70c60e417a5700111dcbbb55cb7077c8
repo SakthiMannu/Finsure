@@ -1,0 +1,31 @@
+package com.finsure.client;
+
+import com.finsure.dto.LoanReportDTO;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+
+// Single Feign client for all LOAN-SERVICE calls
+// Cannot have two @FeignClient interfaces with the same name
+@FeignClient(name = "LOAN-SERVICE",
+        configuration = FeignClientConfig.class)
+public interface LoanReportClient {
+
+    // Used by ReportServiceImpl — get all loans for report
+    @GetMapping("/loans/internal/all")
+    List<LoanReportDTO> getAllLoans();
+
+    // Used by AuditPackageServiceImpl — get loans by period
+    @GetMapping("/loans/internal/by-period")
+    List<LoanReportDTO> getLoansByPeriod(
+            @RequestParam LocalDateTime start,
+            @RequestParam LocalDateTime end);
+
+    // Used by KPIServiceImpl — get loan counts
+    @GetMapping("/loans/internal/stats")
+    Map<String, Long> getLoanStats();
+}

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename compilation unit &apos;com.finsure.exception.MemberAlreadyExistsExeception.java&apos; to &apos;MemberAlreadyExistsException.java&apos;&#x0D;&#x0A;- Original project: &apos;member-service&apos;&#x0D;&#x0A;- Original element: &apos;com.finsure.exception.MemberAlreadyExistsExeception.java&apos;&#x0D;&#x0A;- Renamed element: &apos;com.finsure.exception.MemberAlreadyExistsException.java&apos;" description="Rename compilation unit &apos;MemberAlreadyExistsExeception.java&apos;" flags="2" id="org.eclipse.jdt.ui.rename.compilationunit" input="/src\/main\/java=/optional=/true=/=/maven.pomderived=/true=/&lt;com.finsure.exception{MemberAlreadyExistsExeception.java" name="MemberAlreadyExistsException.java" references="false" stamp="1777807680864" version="1.0"/>
+</session>

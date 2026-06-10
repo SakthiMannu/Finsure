@@ -1,0 +1,23 @@
+package com.finsure.dto;
+
+import java.time.LocalDate;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+// This DTO mirrors the MemberResponseDTO from Member-Service
+// Feign maps the response JSON into this object
+// We only need fields we actually use in loan-service
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class MemberDTO {
+
+    private Long memberId;
+    private String name;
+    private LocalDate dob;
+    private String contactInfo;
+    private String status;
+}

@@ -1,0 +1,44 @@
+package com.finsure.entity;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
+
+// Stores loan applications submitted by members
+// memberId links to Member-Service - we store just the ID
+// because Member data lives in a different database (finsure_member)
+// This is the microservices pattern - no JPA join across services
+@Entity
+@Table(name = "loan_application")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class LoanApplication {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long loanId;
+
+    // We store memberId as a plain Long, not a @ManyToOne
+    // because Member entity is in a different service and database
+    private Long memberId;
+
+    private double amount;
+    private String purpose;
+    private LocalDate submittedAt;
+
+    // Status values: PENDING, APPROVED, REJECTED
+    private String status;
+
+    private String approvedBy;
+
+    // Date the next EMI payment is due - set when loan is approved
+    private LocalDate nextDueDate;
+    
+    @Column(nullable = true, length = 500)
+    private String customPurpose;
+
+}

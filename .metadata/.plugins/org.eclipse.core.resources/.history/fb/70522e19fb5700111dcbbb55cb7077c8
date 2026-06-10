@@ -1,0 +1,91 @@
+package com.finsure.controller;
+
+import com.finsure.dto.RepaymentRequestDTO;
+import com.finsure.dto.RepaymentResponseDTO;
+import com.finsure.service.RepaymentServiceImpl;
+import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/repayments")
+public class RepaymentController {
+
+    @Autowired
+    private RepaymentServiceImpl repaymentService;
+
+    // TELLER or MEMBER can create a repayment
+    @PostMapping
+    public ResponseEntity<?> createRepayment(
+            @RequestHeader("X-User-Role") String role,
+            @Valid @RequestBody RepaymentRequestDTO dto) {
+
+    	if (!role.equals("LOAN_OFFICER") && !role.equals("ADMIN")) {
+    	    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+    	            .body("Access Denied: Only LOAN_OFFICER or ADMIN can process repayments");
+    	}
+        return new ResponseEntity<>(
+                repaymentService.createRepayment(dto), HttpStatus.CREATED);
+    }
+
+    // View repayment history for a loan
+    @GetMapping("/history/{loanId}")
+    public ResponseEntity<?> getRepaymentHistory(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable Long loanId) {
+
+        if (!role.equals("TELLER") && !role.equals("MEMBER")
+                && !role.equals("LOAN_OFFICER") && !role.equals("BRANCH_MANAGER")
+                && !role.equals("ADMIN") && !role.equals("AUDITOR")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Insufficient role");
+        }
+        return ResponseEntity.ok(repaymentService.getRepaymentHistory(loanId));
+    }
+
+    // Get specific repayment
+    @GetMapping("/{repaymentId}")
+    public ResponseEntity<?> getRepaymentById(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable Long repaymentId) {
+
+        if (!role.equals("TELLER") && !role.equals("MEMBER")
+                && !role.equals("LOAN_OFFICER") && !role.equals("BRANCH_MANAGER")
+                && !role.equals("ADMIN") && !role.equals("AUDITOR")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Insufficient role");
+        }
+        return ResponseEntity.ok(repaymentService.getRepaymentById(repaymentId));
+    }
+
+    // Only TELLER or ADMIN can update repayment
+    @PutMapping("/{repaymentId}")
+    public ResponseEntity<?> updateRepayment(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable Long repaymentId,
+            @Valid @RequestBody RepaymentRequestDTO dto) {
+
+        if (!role.equals("TELLER") && !role.equals("ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Only TELLER or ADMIN can update repayments");
+        }
+        return ResponseEntity.ok(
+                repaymentService.updateRepaymentById(repaymentId, dto));
+    }
+
+    // Only ADMIN can delete repayment
+    @DeleteMapping("/{repaymentId}")
+    public ResponseEntity<?> deleteRepayment(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable Long repaymentId) {
+
+        if (!role.equals("ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Only ADMIN can delete repayments");
+        }
+        return ResponseEntity.ok(
+                repaymentService.deleteRepaymentById(repaymentId));
+    }
+}

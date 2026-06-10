@@ -1,0 +1,33 @@
+﻿package com.finsure.mapper;
+
+import org.springframework.stereotype.Component;
+
+import com.finsure.dto.MemberRequestDTO;
+import com.finsure.dto.MemberResponseDTO;
+import com.finsure.entity.Member;
+
+@Component
+public class MemberMapper {
+
+
+    public Member toEntity(MemberRequestDTO dto) {
+        if (dto == null) return null;
+        Member mem = new Member();
+        mem.setName(dto.getName());
+        mem.setDob(dto.getDob());
+        mem.setContactInfo(dto.getContactInfo());
+        return mem;
+    }
+
+
+    public MemberResponseDTO toResponseDTO(Member mem) {
+        if (mem == null) return null;
+        MemberResponseDTO response = new MemberResponseDTO();
+        response.setMemberId(mem.getMemberId());
+        response.setName(mem.getName());
+        response.setDob(mem.getDob());
+        response.setContactInfo(mem.getContactInfo());
+        response.setStatus(mem.getStatus());
+        return response;
+    }
+}

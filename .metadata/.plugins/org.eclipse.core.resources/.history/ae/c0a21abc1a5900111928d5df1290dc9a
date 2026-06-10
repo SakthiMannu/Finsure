@@ -1,0 +1,29 @@
+package com.finsure.entity;
+
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
+
+// This table stores cooperative bank members (customers)
+@Entity
+@Table(name = "members")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Member {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long memberId;
+
+    private String name;
+    private LocalDate dob;
+    private String contactInfo;
+
+    // Status: ACTIVE or INACTIVE
+    private String status;
+    }

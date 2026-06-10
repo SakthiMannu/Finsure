@@ -1,0 +1,14 @@
+package com.finsure.client;
+
+import java.util.Map;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+
+@FeignClient(name = "TRANSACTION-SERVICE",
+configuration = FeignClientConfig.class)
+public interface TransactionStatsClient {
+
+@GetMapping("/api/transactions/internal/stats")
+Map<String, Object> getTransactionStats();
+}

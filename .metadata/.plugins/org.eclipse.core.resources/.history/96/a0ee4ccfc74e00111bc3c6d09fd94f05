@@ -1,0 +1,5 @@
+package com.finsure.client;
+
+public interface RepaymentReportClient {
+
+}

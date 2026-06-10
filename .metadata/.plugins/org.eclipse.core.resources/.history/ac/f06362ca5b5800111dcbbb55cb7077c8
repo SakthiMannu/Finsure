@@ -1,0 +1,167 @@
+package com.finsure.controller;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.finsure.dto.MemberRequestDTO;
+import com.finsure.entity.Member;
+import com.finsure.repository.MemberRepository;
+import com.finsure.service.MemberServiceImpl;
+
+import jakarta.validation.Valid;
+
+// No Spring Security here
+// Role check is done by reading X-User-Role header
+// This header is added by API Gateway after validating the JWT token
+@RestController
+@RequestMapping("/members")
+public class MemberController {
+
+	@Autowired
+	private MemberServiceImpl memberService;
+	
+	@Autowired
+	private MemberRepository memberRepo;
+
+	// Only TELLER or ADMIN can register a new member
+	@PostMapping
+	public ResponseEntity<?> createMember(@RequestHeader("X-User-Role") String role,
+			@Valid @RequestBody MemberRequestDTO dto) {
+
+		if (!role.equals("TELLER") && !role.equals("ADMIN")) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN)
+					.body("Access Denied: Only TELLER or ADMIN can create members");
+		}
+		return new ResponseEntity<>(memberService.createMember(dto), HttpStatus.CREATED);
+	}
+
+	// LOAN_OFFICER, BRANCH_MANAGER, ADMIN, AUDITOR can view all members
+	@GetMapping
+	public ResponseEntity<?> getAllMembers(@RequestHeader("X-User-Role") String role) {
+
+		if (!role.equals("LOAN_OFFICER") && !role.equals("BRANCH_MANAGER") && !role.equals("ADMIN")
+				&& !role.equals("AUDITOR")) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied: Insufficient role");
+		}
+		return new ResponseEntity<>(memberService.getAllMembers(), HttpStatus.OK);
+	}
+
+	// TELLER, LOAN_OFFICER, BRANCH_MANAGER, ADMIN, AUDITOR, MEMBER can view by ID
+	@GetMapping("/{id}")
+	public ResponseEntity<?> getMemberById(@RequestHeader("X-User-Role") String role, @PathVariable Long id) {
+
+		if (role.equals("MEMBER") || role.equals("TELLER") || role.equals("LOAN_OFFICER")
+				|| role.equals("BRANCH_MANAGER") || role.equals("ADMIN") || role.equals("AUDITOR")) {
+			return new ResponseEntity<>(memberService.getMemberById(id), HttpStatus.OK);
+		}
+		return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied: Insufficient role");
+	}
+
+	// Only TELLER or ADMIN can update member details
+	@PutMapping("/{id}")
+	public ResponseEntity<?> updateMember(@RequestHeader("X-User-Role") String role, @PathVariable Long id,
+			@Valid @RequestBody MemberRequestDTO dto) {
+
+		if (!role.equals("TELLER") && !role.equals("ADMIN")) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN)
+					.body("Access Denied: Only TELLER or ADMIN can update members");
+		}
+		return new ResponseEntity<>(memberService.updateMember(id, dto), HttpStatus.ACCEPTED);
+	}
+	// Returns memberId for the logged-in CUSTOMER
+	@GetMapping("/my-member-id")
+	public ResponseEntity<?> getMyMemberId(
+	        @RequestHeader("X-User-Role") String role,
+	        @RequestHeader(value = "X-User-Member-Id",
+	                       required = false) String memberIdStr) {
+
+	    if (!role.equals("MEMBER")) {
+	        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+	                .body("Only MEMBER can use this endpoint");
+	    }
+
+	    if (memberIdStr == null || memberIdStr.isBlank()) {
+	        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+	                .body("No member linked to your account. "
+	                        + "Contact your branch.");
+	    }
+
+	    return ResponseEntity.ok(Long.parseLong(memberIdStr));
+	}
+
+	// -------------------------------------------------------
+	// INTERNAL ENDPOINT - For Feign calls from other services
+	// -------------------------------------------------------
+	// Called by Loan-Service to verify member exists
+	// before creating a loan application
+	@GetMapping("/internal/{id}")
+	public ResponseEntity<?> getMemberByIdInternal(
+			@RequestHeader(value = "X-Internal-Call", required = false) String internalCall, @PathVariable Long id) {
+
+		if (!"true".equals(internalCall)) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied: Internal endpoint only");
+		}
+		return ResponseEntity.ok(memberService.getMemberById(id));
+	}
+	@GetMapping("/internal/all")
+	public ResponseEntity<?> getAllMembersInternal(
+	        @RequestHeader(value = "X-Internal-Call", required = false)
+	        String internalCall) {
+
+	    if (!"true".equals(internalCall)) {
+	        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+	                .body("Access Denied: Internal endpoint only");
+	    }
+	    return ResponseEntity.ok(memberService.getAllMembers());
+	}
+	// Internal endpoint — called by Loan-Service to get memberId from email
+	@GetMapping("/members/internal/by-email")
+	public ResponseEntity<?> getMemberByEmailInternal(
+	        @RequestHeader(value = "X-Internal-Call",
+	                required = false) String internalCall,
+	        @RequestParam String email) {
+
+	    if (!"true".equals(internalCall)) {
+	        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+	                .body("Access Denied: Internal endpoint only");
+	    }
+
+	    try {
+	        Member member = memberService.getMemberByEmail(email);
+	        return ResponseEntity.ok(member.getMemberId());
+	    } catch (Exception e) {
+	        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+	                .body("No member linked to email: " + email);
+	    }
+	}
+	@GetMapping("/members/internal/by-name")
+	public ResponseEntity<?> getMemberIdByNameInternal(
+	        @RequestHeader(value = "X-Internal-Call",
+	                       required = false) String internalCall,
+	        @RequestParam String name) {
+
+	    if (!"true".equals(internalCall)) {
+	        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+	                .body("Access Denied");
+	    }
+	    try {
+	        Member member = memberRepo
+	                .findByNameIgnoreCase(name)
+	                .orElseThrow();
+	        return ResponseEntity.ok(member.getMemberId());
+	    } catch (Exception e) {
+	        return ResponseEntity.ok(null);
+	    }
+	}
+	
+}

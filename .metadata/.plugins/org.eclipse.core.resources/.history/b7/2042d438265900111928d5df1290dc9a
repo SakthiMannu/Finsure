@@ -1,0 +1,53 @@
+package com.finsure.client;
+
+import feign.RequestInterceptor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+@Configuration
+public class FeignClientConfig {
+
+    @Bean
+    RequestInterceptor requestInterceptor() {
+        return requestTemplate -> {
+
+            // Always add internal call marker
+            requestTemplate.header("X-Internal-Call", "true");
+
+            // Only try to get role if there is an active HTTP request
+            // In scheduled threads (midnight scheduler) there is no request
+            // so RequestContextHolder returns null — handle safely
+            try {
+                ServletRequestAttributes attributes =
+                        (ServletRequestAttributes) RequestContextHolder
+                                .getRequestAttributes();
+
+                if (attributes != null) {
+                    String role = attributes.getRequest()
+                            .getHeader("X-User-Role");
+                    String email = attributes.getRequest()
+                            .getHeader("X-User-Email");
+
+                    if (role != null) {
+                        requestTemplate.header("X-User-Role", role);
+                    }
+                    if (email != null) {
+                        requestTemplate.header("X-User-Email", email);
+                    }
+                }
+                // If attributes is null (scheduler context)
+                // we still proceed with just X-Internal-Call: true
+                // which is enough for internal endpoints
+
+            } catch (Exception e) {
+                // Safe fallback — never crash the Feign call
+                // because of header extraction failure
+                System.out.println("FeignClientConfig: "
+                        + "Running in non-request context "
+                        + "(scheduled task) — skipping role header");
+            }
+        };
+    }
+}

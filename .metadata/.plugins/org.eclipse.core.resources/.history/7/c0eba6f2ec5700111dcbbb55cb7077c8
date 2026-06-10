@@ -1,0 +1,20 @@
+package com.finsure.service;
+
+import com.finsure.dto.LoanApplicationRequestDTO;
+import com.finsure.dto.LoanApplicationResponseDTO;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+public interface LoanApplicationService {
+    LoanApplicationResponseDTO createLoanApplication(LoanApplicationRequestDTO dto);
+    List<LoanApplicationResponseDTO> getAllLoanApplications();
+    LoanApplicationResponseDTO getLoanApplicationById(Long loanId);
+    List<LoanApplicationResponseDTO> getLoanApplicationsByMemberId(Long memberId);
+    LoanApplicationResponseDTO updateLoanApplication(Long loanId, LoanApplicationRequestDTO dto);
+    List<LoanApplicationResponseDTO> getOverdueLoans();
+    void pushNextDueDate(Long loanId);
+    List<LoanApplicationResponseDTO> getLoansByPeriod(
+            LocalDateTime start, LocalDateTime end);
+    
+}

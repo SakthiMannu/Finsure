@@ -1,0 +1,5 @@
+package com.finsure.dto;
+
+public class RepaymentReportDTO {
+
+}

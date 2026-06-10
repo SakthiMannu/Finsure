@@ -1,0 +1,49 @@
+package com.finsure.controller;
+
+import com.finsure.dto.CreateUserRequest;
+import com.finsure.dto.ForgotPasswordRequest;
+import com.finsure.dto.LoginRequest;
+import com.finsure.service.AuthServiceImpl;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/auth")
+public class AuthController {
+
+    @Autowired
+    private AuthServiceImpl authService;
+
+    // Public — no token needed
+    @PostMapping("/login")
+    public ResponseEntity<?> login(
+            @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
+    }
+
+    // Public — no token needed
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(
+            @RequestBody ForgotPasswordRequest request) {
+        return ResponseEntity.ok(
+                authService.forgotPassword(request));
+    }
+
+    // ADMIN only — creates any user with any role
+    // Password is auto-generated — not from request
+    @PostMapping("/register")
+    public ResponseEntity<?> createUser(
+            @RequestHeader(value = "X-User-Role",
+                           required = false) String callerRole,
+            @RequestBody CreateUserRequest request) {
+
+        if (!"ADMIN".equals(callerRole)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Only ADMIN can create users");
+        }
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(authService.createUser(request));
+    }
+}

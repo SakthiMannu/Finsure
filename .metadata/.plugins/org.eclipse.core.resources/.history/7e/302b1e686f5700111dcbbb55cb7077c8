@@ -1,0 +1,17 @@
+package com.finsure.service;
+
+import com.finsure.dto.KPIDTO;
+import java.util.List;
+
+public interface KPIService {
+
+    List<KPIDTO> getAllKPIs();
+    List<KPIDTO> getKPIsByCategory(String category);
+    KPIDTO getKPIById(Long id);
+    KPIDTO updateKPI(Long id, KPIDTO dto);
+    void deleteKPI(Long id);
+    KPIDTO calculateAndSaveKPI(String category, String generatedBy);
+
+    // Add this if going with Option A
+    KPIDTO createKPI(KPIDTO dto);
+}

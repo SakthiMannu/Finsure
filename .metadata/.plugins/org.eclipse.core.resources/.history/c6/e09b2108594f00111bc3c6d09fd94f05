@@ -1,0 +1,16 @@
+package com.finsure.repository;
+
+import com.finsure.entity.Transaction;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import java.util.List;
+
+@Repository
+public interface TransactionRepository extends JpaRepository<Transaction, Long> {
+
+    // Get all transactions for an account ordered by newest first
+    List<Transaction> findByAccountIdOrderByPerformedAtDesc(Long accountId);
+    
+    List<Transaction> findByPerformedAtBetween(
+            LocalDateTime start, LocalDateTime end);
+}

@@ -1,0 +1,22 @@
+package com.finsure.client;
+
+import com.finsure.dto.NotificationRequestDTO;
+import com.finsure.dto.TaskRequestDTO;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
+// One single Feign client for all calls to Reporting-Service
+// Rule: one @FeignClient per target service
+// Combining notification and task here avoids bean conflict
+@FeignClient(name = "REPORTING-SERVICE", configuration = FeignClientConfig.class)
+public interface ReportingClient {
+
+    // Called after loan is approved - notifies member
+    @PostMapping("/api/notifications/internal")
+    void createNotification(@RequestBody NotificationRequestDTO dto);
+
+    // Called after loan application is submitted - creates review task
+    @PostMapping("/api/tasks/internal")
+    void createTask(@RequestBody TaskRequestDTO dto);
+}

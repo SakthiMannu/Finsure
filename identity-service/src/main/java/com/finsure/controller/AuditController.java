@@ -1,0 +1,73 @@
+package com.finsure.controller;
+
+import java.time.LocalDateTime;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.finsure.service.AuditService;
+
+@RestController
+@RequestMapping("/audit")
+public class AuditController {
+
+    @Autowired
+    private AuditService auditService;
+
+
+    @GetMapping
+    public ResponseEntity<?> getAllLogs(
+            @RequestHeader("X-User-Role") String role) {
+
+        if (!role.equals("ADMIN") && !role.equals("AUDITOR")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Only ADMIN or AUDITOR can view audit logs");
+        }
+        return ResponseEntity.ok(auditService.getAllLogs());
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<?> getLogsByUser(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable Long userId) {
+
+        if (!role.equals("ADMIN") && !role.equals("AUDITOR")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Insufficient role");
+        }
+        return ResponseEntity.ok(auditService.getLogsByUser(userId));
+    }
+
+    @GetMapping("/action/{action}")
+    public ResponseEntity<?> getLogsByAction(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable String action) {
+
+        if (!role.equals("ADMIN") && !role.equals("AUDITOR")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Insufficient role");
+        }
+        return ResponseEntity.ok(auditService.getLogsByAction(action));
+    }
+
+    @GetMapping("/range")
+    public ResponseEntity<?> getLogsByDateRange(
+            @RequestHeader("X-User-Role") String role,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
+
+        if (!role.equals("ADMIN") && !role.equals("AUDITOR")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Insufficient role");
+        }
+        return ResponseEntity.ok(auditService.getLogsByDateRange(start, end));
+    }
+}

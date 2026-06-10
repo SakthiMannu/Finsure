@@ -1,0 +1,180 @@
+package com.finsure.service;
+
+import com.finsure.client.AccountClient;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import com.finsure.dto.AccountDTO;
+import com.finsure.dto.TransactionRequestDTO;
+import com.finsure.dto.TransactionResponseDTO;
+import com.finsure.entity.Transaction;
+import com.finsure.exception.AccountNotFoundException;
+import com.finsure.exception.TransactionNotFoundException;
+import com.finsure.repository.TransactionRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class TransactionServiceImpl implements TransactionService {
+
+    @Autowired
+    private TransactionRepository transactionRepo;
+
+    // Feign client - calls Member-Service for account operations
+    @Autowired
+    private AccountClient accountClient;
+
+    @Transactional
+    @CircuitBreaker(name = "default", fallbackMethod = "depositFallback")
+    @Retry(name = "default")
+    public TransactionResponseDTO deposit(TransactionRequestDTO dto) {
+
+        // Step 1: Get account details from Member-Service
+        AccountDTO account = accountClient.getAccountById(dto.getAccountId());
+        if (account == null) {
+            throw new AccountNotFoundException(
+                    "Account Not Found With ID: " + dto.getAccountId());
+        }
+
+        // Step 2: Account must be active to accept deposits
+        if (!account.getStatus().equalsIgnoreCase("ACTIVE")) {
+            throw new RuntimeException(
+                    "Account ID: " + dto.getAccountId() + " is not active");
+        }
+
+        // Step 3: Calculate new balance
+        double newBalance = account.getBalance() + dto.getAmount();
+
+        // Step 4: Update balance in Member-Service via Feign
+        accountClient.updateAccountBalance(dto.getAccountId(), newBalance);
+
+        // Step 5: Save transaction record
+        Transaction txn = new Transaction();
+        txn.setAccountId(dto.getAccountId());
+        txn.setType(Transaction.TxnType.DEPOSIT);
+        txn.setAmount(dto.getAmount());
+        txn.setPerformedBy(dto.getPerformedBy());
+        txn.setPerformedAt(LocalDateTime.now());
+        txn.setStatus("SUCCESS");
+
+        return mapToResponseDTO(transactionRepo.save(txn));
+    }
+    public TransactionResponseDTO depositFallback(
+            TransactionRequestDTO dto, Throwable ex) {
+        throw new RuntimeException(
+                "Account Service is currently unavailable. "
+                + "Cannot process deposit. Please try again shortly.");
+    }
+
+    @Transactional
+    @CircuitBreaker(name = "default", fallbackMethod = "withdrawFallback")
+    @Retry(name = "default")
+    public TransactionResponseDTO withdraw(TransactionRequestDTO dto) {
+
+        // Step 1: Get account details from Member-Service
+        AccountDTO account = accountClient.getAccountById(dto.getAccountId());
+        if (account == null) {
+            throw new AccountNotFoundException(
+                    "Account Not Found With ID: " + dto.getAccountId());
+        }
+
+        // Step 2: Account must be active
+        if (!account.getStatus().equalsIgnoreCase("ACTIVE")) {
+            throw new RuntimeException(
+                    "Account ID: " + dto.getAccountId() + " is not active");
+        }
+
+        // Step 3: Check sufficient balance before withdrawing
+        if (account.getBalance() < dto.getAmount()) {
+            throw new RuntimeException(
+                    "Insufficient Balance. Available: Rs."
+                    + account.getBalance()
+                    + " Requested: Rs." + dto.getAmount());
+        }
+
+        // Step 4: Calculate new balance
+        double newBalance = account.getBalance() - dto.getAmount();
+
+        // Step 5: Update balance in Member-Service via Feign
+        accountClient.updateAccountBalance(dto.getAccountId(), newBalance);
+
+        // Step 6: Save transaction record
+        Transaction txn = new Transaction();
+        txn.setAccountId(dto.getAccountId());
+        txn.setType(Transaction.TxnType.WITHDRAWAL);
+        txn.setAmount(dto.getAmount());
+        txn.setPerformedBy(dto.getPerformedBy());
+        txn.setPerformedAt(LocalDateTime.now());
+        txn.setStatus("SUCCESS");
+
+        return mapToResponseDTO(transactionRepo.save(txn));
+    }
+    public TransactionResponseDTO withdrawFallback(
+            TransactionRequestDTO dto, Throwable ex) {
+        throw new RuntimeException(
+                "Account Service is currently unavailable. "
+                + "Cannot process withdrawal. Please try again shortly.");
+    }
+
+    public Double getBalance(Long accountId) {
+
+        // Get current balance from Member-Service
+        AccountDTO account = accountClient.getAccountById(accountId);
+        if (account == null) {
+            throw new AccountNotFoundException(
+                    "Account Not Found With ID: " + accountId);
+        }
+
+        if (!account.getStatus().equalsIgnoreCase("ACTIVE")) {
+            throw new RuntimeException(
+                    "Account ID: " + accountId + " is not active");
+        }
+
+        return account.getBalance();
+    }
+
+    public List<TransactionResponseDTO> getTransactionHistory(Long accountId) {
+
+        List<Transaction> transactions =
+                transactionRepo.findByAccountIdOrderByPerformedAtDesc(accountId);
+
+        if (transactions.isEmpty()) {
+            throw new TransactionNotFoundException(
+                    "No Transactions Found For Account ID: " + accountId);
+        }
+
+        return transactions.stream()
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+    public List<TransactionResponseDTO> getAllTransactions() {
+        return transactionRepo.findAll()
+                .stream()
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<TransactionResponseDTO> getTransactionsByPeriod(
+            LocalDateTime start, LocalDateTime end) {
+        return transactionRepo.findByPerformedAtBetween(start, end)
+                .stream()
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+    // Helper method - maps entity to response DTO
+    private TransactionResponseDTO mapToResponseDTO(Transaction txn) {
+        TransactionResponseDTO dto = new TransactionResponseDTO();
+        dto.setTxnId(txn.getTxnId());
+        dto.setAccountId(txn.getAccountId());
+        dto.setType(txn.getType().name());
+        dto.setAmount(txn.getAmount());
+        dto.setPerformedBy(txn.getPerformedBy());
+        dto.setPerformedAt(txn.getPerformedAt());
+        dto.setStatus(txn.getStatus());
+        return dto;
+    }
+   
+}

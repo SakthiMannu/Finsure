@@ -1,0 +1,21 @@
+spring.application.name=identity-service
+server.port=8081
+spring.config.import=optional:configserver:http://localhost:8888
+spring.cloud.config.retry.max-attempts=6
+spring.cloud.config.retry.initial-interval=1000
+spring.cloud.config.retry.max-interval=2000
+
+# JWT secret - same value must be set in api-gateway
+# In production, override via env var: APP_JWT_SECRET
+app.jwt.secret=${APP_JWT_SECRET:KZ9A$S3D@F8r#pL1!Zx7H*R6ewYV%TmUqC2M0}
+
+# Local fallback - service uses this if config server is unreachable
+spring.datasource.url=jdbc:mysql://localhost:3306/finsure_identity
+spring.datasource.username=${DB_USERNAME:root}
+spring.datasource.password=${DB_PASSWORD:root}
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+eureka.instance.prefer-ip-address=true
+eureka.instance.hostname=localhost
