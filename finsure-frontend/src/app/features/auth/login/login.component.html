@@ -1,0 +1,106 @@
+<div class="auth-page">
+
+  
+  <div class="auth-left">
+
+    <div class="auth-brand">
+      <span class="material-icons" style="font-size:48px;color:white">
+        account_balance
+      </span>
+      <h1>FinSure</h1>
+      <p>Cooperative Banking &amp; Loan Management System</p>
+    </div>
+
+    <div class="auth-features">
+
+      <div class="auth-feature">
+        <span class="material-icons">security</span>
+        <span>Secure &amp; Role-Based Access</span>
+      </div>
+
+      <div class="auth-feature">
+        <span class="material-icons">assessment</span>
+        <span>Real-Time Reporting</span>
+      </div>
+
+      <div class="auth-feature">
+        <span class="material-icons">account_tree</span>
+        <span>Microservices Architecture</span>
+      </div>
+
+    </div>
+
+  </div>
+
+  
+  <div class="auth-right">
+    
+    <div class="auth-card">
+
+      <div style="text-align:center;margin-bottom:28px">
+        <div style="width:56px;height:56px;background:var(--primary);border-radius:16px;
+                    display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+          <span class="material-icons" style="color:white;font-size:28px">lock</span>
+        </div>
+        <h2 style="font-size:22px;margin-bottom:4px">Welcome Back</h2>
+        <p style="color:var(--gray-400)">Sign in to your account</p>
+      </div>
+
+      @if (error) {
+        <div class="alert alert-danger">
+          <span class="material-icons">error_outline</span> {{ error }}
+        </div>
+      }
+
+      <form (ngSubmit)="onLogin()">
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-control"
+                 [(ngModel)]="email" name="email"
+                 placeholder="Enter your email" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div style="position:relative">
+            <input [type]="showPassword ? 'text' : 'password'"
+                   class="form-control"
+                   [(ngModel)]="password" name="password"
+                   placeholder="Enter your password" required>
+            <button type="button"
+                    style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
+                           background:none;border:none;cursor:pointer;color:var(--gray-400)"
+                    (click)="showPassword = !showPassword">
+              <span class="material-icons" style="font-size:20px">
+                {{ showPassword ? 'visibility_off' : 'visibility' }}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div style="text-align:right;margin-bottom:20px">
+          <a routerLink="/forgot-password"
+             style="color:var(--primary);font-size:13px;text-decoration:none">
+            Forgot password?
+          </a>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-full"
+                style="justify-content:center;padding:12px"
+                [disabled]="loading">
+          @if (!loading) {
+            <span class="material-icons">login</span>
+          }
+          @if (loading) {
+            <div style="width:20px;height:20px;border:2px solid rgba(255,255,255,0.3);
+                        border-top-color:white;border-radius:50%;
+                        animation:spin 0.8s linear infinite">
+            </div>
+          }
+          {{ loading ? 'Signing in...' : 'Sign In' }}
+        </button>
+      </form>
+
+    </div>
+  </div>
+</div>

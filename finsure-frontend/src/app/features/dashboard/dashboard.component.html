@@ -1,0 +1,109 @@
+<div>
+  
+  <div class="card" style="margin-bottom:24px;
+       background:linear-gradient(135deg,var(--primary-dark),var(--accent));
+       color:white;border:none">
+    <h2 style="color:white;font-size:20px;margin-bottom:4px">
+      Good {{ timeGreeting }}, {{ auth.getDisplayName() }} 👋
+    </h2>
+    <p style="color:rgba(255,255,255,0.8)">
+      Role: {{ auth.getRole() }} | FinSure Cooperative Banking System
+    </p>
+  </div>
+
+  
+  <div class="stats-grid">
+    @if (hasRole('TELLER','ADMIN','BRANCH_MANAGER','AUDITOR','LOAN_OFFICER')) {
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-label">Total Members</div>
+        <div class="stat-value" style="color:var(--primary)">{{ memberCount }}</div>
+      </div>
+    }
+    @if (hasRole('LOAN_OFFICER','ADMIN','BRANCH_MANAGER','AUDITOR')) {
+      <div class="stat-card">
+        <div class="stat-icon">📋</div>
+        <div class="stat-label">Total Loans</div>
+        <div class="stat-value" style="color:var(--accent)">{{ loanCount }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-label">Pending Loans</div>
+        <div class="stat-value" style="color:var(--warning)">{{ pendingLoanCount }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-label">Approved Loans</div>
+        <div class="stat-value" style="color:var(--success)">{{ approvedLoanCount }}</div>
+      </div>
+    }
+  </div>
+  
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Quick Actions</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">
+
+      @if (hasRole('TELLER', 'ADMIN')) {
+        <a routerLink="/app/members/new" class="quick-action">
+          <span class="material-icons">person_add</span>
+          <span>Register Member</span>
+        </a>
+      }
+      @if (hasRole('TELLER','ADMIN','LOAN_OFFICER','BRANCH_MANAGER','AUDITOR')) {
+        <a routerLink="/app/members" class="quick-action">
+          <span class="material-icons">people</span>
+          <span>View Members</span>
+        </a>
+      }
+      @if (hasRole('MEMBER', 'LOAN_OFFICER', 'ADMIN')) {
+        <a routerLink="/app/loans/apply" class="quick-action">
+          <span class="material-icons">add_card</span>
+          <span>Apply for Loan</span>
+        </a>
+      }
+      @if (hasRole('LOAN_OFFICER', 'ADMIN', 'BRANCH_MANAGER')) {
+        <a routerLink="/app/loans/pending" class="quick-action">
+          <span class="material-icons">pending_actions</span>
+          <span>Review Loans</span>
+        </a>
+      }
+      @if (hasRole('LOAN_OFFICER', 'ADMIN')) {
+        <a routerLink="/app/repayments" class="quick-action">
+          <span class="material-icons">payment</span>
+          <span>Make Repayment</span>
+        </a>
+      }
+      @if (hasRole('TELLER', 'ADMIN')) {
+        <a routerLink="/app/transactions/deposit" class="quick-action">
+          <span class="material-icons">savings</span>
+          <span>Deposit</span>
+        </a>
+        <a routerLink="/app/transactions/withdraw" class="quick-action">
+          <span class="material-icons">money_off</span>
+          <span>Withdraw</span>
+        </a>
+      }
+      @if (hasRole('TELLER','ADMIN','BRANCH_MANAGER','MEMBER')) {
+        <a routerLink="/app/transactions/balance" class="quick-action">
+          <span class="material-icons">account_balance_wallet</span>
+          <span>Check Balance</span>
+        </a>
+      }
+      @if (hasRole('BRANCH_MANAGER', 'ADMIN', 'AUDITOR')) {
+        <a routerLink="/app/reports" class="quick-action">
+          <span class="material-icons">assessment</span>
+          <span>Generate Report</span>
+        </a>
+      }
+      @if (hasRole('ADMIN')) {
+        <a routerLink="/app/users" class="quick-action">
+          <span class="material-icons">manage_accounts</span>
+          <span>Manage Users</span>
+        </a>
+      }
+
+    </div>
+  </div>
+</div>

@@ -1,0 +1,60 @@
+<div>
+  <div class="page-header">
+    <h1 class="page-title">Repayment History</h1>
+    <a routerLink="/app/repayments" class="btn btn-primary">
+      <span class="material-icons">payment</span> Make Payment
+    </a>
+  </div>
+  <div class="card">
+    <div class="search-bar">
+      <input type="number" class="form-control" [(ngModel)]="loanId" placeholder="Enter Loan ID">
+      <button class="btn btn-primary" (click)="search()">
+        <span class="material-icons">search</span> Search
+      </button>
+    </div>
+    @if (loading) { <div class="loading-container"><div class="spinner"></div></div> }
+    @if (error) {
+      <div class="alert alert-danger">
+        <span class="material-icons">error_outline</span> {{ error }}
+      </div>
+    }
+    @if (repayments.length > 0) {
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Loan ID</th><th>Amount</th>
+              <th>Method</th><th>Status</th><th>Paid At</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of repayments; track r.repaymentId) {
+              <tr>
+                <td>#{{ r.repaymentId }}</td>
+                <td>#{{ r.loanId }}</td>
+                <td style="font-weight:600;color:var(--success)">
+                  &#8377;{{ r.amount | number:'1.2-2' }}
+                </td>
+                <td><span class="badge badge-blue">{{ r.method }}</span></td>
+                <td><span class="badge badge-success">{{ r.status }}</span></td>
+                <td>{{ r.paidAt | date:'short' }}</td>
+                <td>
+                  <a [routerLink]="['/app/repayments', r.repaymentId]"
+                     class="btn btn-sm btn-outline">
+                    <span class="material-icons" style="font-size:16px">visibility</span>
+                  </a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+    @if (repayments.length === 0 && searched) {
+      <div class="empty-state">
+        <span class="material-icons">receipt_long</span>
+        <p>No repayments found for this loan</p>
+      </div>
+    }
+  </div>
+</div>

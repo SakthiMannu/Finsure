@@ -1,0 +1,207 @@
+<div>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Account Details</h1>
+      @if (member) {
+        <p class="page-subtitle">{{ member.name }} — Member #{{ member.memberId }}</p>
+      }
+    </div>
+    <a routerLink="/app/members" class="btn btn-ghost">
+      <span class="material-icons">arrow_back</span> Back
+    </a>
+  </div>
+
+  
+  @if (member) {
+    <div class="card" style="margin-bottom:20px">
+
+      <div class="card-header">
+        <span class="card-title">Member Information</span>
+        <span class="badge"
+              [class.badge-success]="member.status === 'ACTIVE'"
+              [class.badge-danger]="member.status !== 'ACTIVE'">
+          {{ member.status }}
+        </span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+        <div>
+          <div class="stat-label">Member ID</div>
+          <div style="font-weight:600">#{{ member.memberId }}</div>
+        </div>
+        <div>
+          <div class="stat-label">Date of Birth</div>
+          <div style="font-weight:600">{{ member.dob }}</div>
+        </div>
+        <div>
+          <div class="stat-label">Contact</div>
+          <div style="font-weight:600">{{ member.contactInfo }}</div>
+        </div>
+      </div>
+    </div>
+  }
+
+  
+  <div class="card" style="margin-bottom:20px">
+    
+    <div class="card-header">
+      <span class="card-title">Bank Accounts</span>
+
+      @if (hasRole('TELLER', 'ADMIN') && !showCreateAccount) {
+        <button class="btn btn-primary btn-sm"
+                (click)="showCreateAccount = true">
+          <span class="material-icons">add</span> Create Account
+        </button>
+      }
+    </div>
+
+    
+    @if (showCreateAccount) {
+      <div style="background:var(--gray-50);padding:20px;border-radius:var(--radius-sm);
+                  margin-bottom:16px;border:1px solid var(--gray-200)">
+        <h4 style="margin-bottom:16px;font-size:15px">New Account</h4>
+
+        <div class="form-row">
+
+          <div class="form-group">
+            <label class="form-label">Account Type</label>
+            <select class="form-control" [(ngModel)]="newAccountType">
+              <option value="SAVINGS">Savings</option>
+              <option value="CHECKING">Checking</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Opening Balance (Rs.)</label>
+            <input type="number" class="form-control"
+                   [(ngModel)]="newAccountBalance" min="100" placeholder="0">
+          </div>
+
+        </div>
+
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-success btn-sm" (click)="createAccount()">
+            Create Account
+          </button>
+          <button class="btn btn-ghost btn-sm"
+                  (click)="showCreateAccount = false">
+            Cancel
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (accounts.length === 0 && !loading) {
+      <div class="empty-state">
+        <span class="material-icons">account_balance_wallet</span>
+        <p>No accounts found for this member</p>
+      </div>
+    }
+
+    @if (accounts.length > 0) {
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Account ID</th><th>Type</th><th>Balance</th>
+              <th>Created</th><th>Status</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (a of accounts; track a.accountId) {
+              <tr>
+                <td><strong>#{{ a.accountId }}</strong></td>
+                <td>
+                  <span class="badge"
+                        [class.badge-blue]="a.type === 'SAVINGS'"
+                        [class.badge-purple]="a.type === 'CHECKING'">
+                    {{ a.type }}
+                  </span>
+                </td>
+                <td style="font-weight:600;color:var(--success)">
+                  {{ a.balance | currency:'INR':'symbol':'1.2-2' }}
+                </td>
+                <td>{{ a.createdAt }}</td>
+                <td>
+                  <span class="badge"
+                        [class.badge-success]="a.status === 'ACTIVE'"
+                        [class.badge-danger]="a.status !== 'ACTIVE'">
+                    {{ a.status }}
+                  </span>
+                </td>
+                <td>
+                  <div class="action-btns">
+                    <button class="btn btn-sm btn-outline"
+                            [routerLink]="['/app/transactions/history']"
+                            [queryParams]="{accountId: a.accountId}">
+                      <span class="material-icons" style="font-size:16px">receipt_long</span>
+                      Transactions
+                    </button>
+                    @if (hasRole('ADMIN')) {
+                      <button class="btn btn-sm btn-danger"
+                              (click)="deleteAccount(a.accountId)">
+                        <span class="material-icons" style="font-size:16px">delete</span>
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  
+  <div class="card">
+
+    <div class="card-header">
+      <span class="card-title">Loan Applications</span>
+      @if (hasRole('TELLER', 'ADMIN')) {
+        <a [routerLink]="['/app/loans/apply']" class="btn btn-sm btn-accent">
+          <span class="material-icons">add_card</span> New Loan
+        </a>
+      }
+    </div>
+
+    @if (loans.length === 0) {
+      <div class="empty-state">
+        <span class="material-icons">credit_card_off</span>
+        <p>No loan applications found</p>
+      </div>
+    }
+
+    @if (loans.length > 0) {
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Loan ID</th><th>Amount</th><th>Purpose</th>
+              <th>Status</th><th>Applied</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of loans; track l.loanId) {
+              <tr>
+                <td>#{{ l.loanId }}</td>
+                <td>{{ l.amount |currency:'INR':'symbol':'1.2-2'}}</td>
+                <td>{{ l.purpose }}</td>
+                <td>
+                  <span class="badge"
+                        [class.badge-warning]="l.status === 'PENDING'"
+                        [class.badge-success]="l.status === 'APPROVED'"
+                        [class.badge-danger]="l.status === 'REJECTED'"
+                        [class.badge-gray]="l.status === 'CLOSED'">
+                    {{ l.status }}
+                  </span>
+                </td>
+                <td>{{ l.submittedAt }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>

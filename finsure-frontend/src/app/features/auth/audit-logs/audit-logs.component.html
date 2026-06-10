@@ -1,0 +1,88 @@
+<div>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Audit Logs</h1>
+      <p class="page-subtitle">System-wide activity trail</p>
+    </div>
+  </div>
+
+  
+  <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+    <button class="btn"
+            [class.btn-primary]="mode === 'all'"
+            [class.btn-ghost]="mode !== 'all'"
+            (click)="mode = 'all'; loadAll()">
+      All Logs
+    </button>
+
+    <div style="display:flex;gap:6px">
+      <input type="number" class="form-control" style="width:140px"
+             [(ngModel)]="userId" placeholder="User ID">
+      <button class="btn btn-outline" (click)="loadByUser()">By User</button>
+    </div>
+
+    <div style="display:flex;gap:6px">
+      <select class="form-control" style="width:160px" [(ngModel)]="action">
+        <option value="">Select action</option>
+        <option value="UPDATE_ROLE">UPDATE_ROLE</option>
+        <option value="UPDATE_STATUS">UPDATE_STATUS</option>
+        <option value="DELETE_USER">DELETE_USER</option>
+        <option value="REGISTER">REGISTER</option>
+        <option value="LOGIN">LOGIN</option>
+      </select>
+      <button class="btn btn-outline" (click)="loadByAction()">By Action</button>
+    </div>
+  </div>
+
+  <div class="card">
+    @if (loading) {
+      <div class="loading-container"><div class="spinner"></div></div>
+    }
+    @if (error) {
+      <div class="alert alert-danger">{{ error }}</div>
+    }
+    @if (!loading) {
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Log ID</th>
+              <th>User ID</th>
+              <th>Action</th>
+              <th>Resource</th>
+              <th>Details</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (log of logs; track log.auditId) {
+              <tr>
+                <td>#{{ log.auditId }}</td>
+                <td>#{{ log.userId }}</td>
+                <td>
+                  <span class="badge badge-primary" style="font-size:11px">
+                    {{ log.action }}
+                  </span>
+                </td>
+                <td>{{ log.resourceType || '—' }}</td>
+                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;
+                           white-space:nowrap;font-size:12px">
+                  {{ log.details || '—' }}
+                </td>
+                <td style="font-size:12px">{{ log.timestamp | date:'medium' }}</td>
+              </tr>
+            }
+            @if (logs.length === 0) {
+              <tr>
+                <td colspan="6" class="text-center"
+                    style="padding:32px;color:var(--gray-400)">
+                  No audit logs found
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>

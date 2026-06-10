@@ -1,0 +1,267 @@
+<aside class="sidebar" [class.open]="sidebarOpen">
+  <div class="sidebar-brand">
+    <div class="sidebar-brand-icon">
+      <span class="material-icons">account_balance</span>
+    </div>
+    <div>
+      <div class="sidebar-brand-text">FinSure</div>
+      <div class="sidebar-brand-sub">Banking System</div>
+    </div>
+  </div>
+ 
+  <nav class="sidebar-nav">
+ 
+   
+    <div class="sidebar-section">Main</div>
+    <a class="sidebar-item" routerLink="/app/dashboard" routerLinkActive="active">
+      <span class="material-icons">dashboard</span> Dashboard
+    </a>
+ 
+   
+    @if (hasRole('TELLER','ADMIN','LOAN_OFFICER','BRANCH_MANAGER','AUDITOR')) {
+      <div class="sidebar-section">Members</div>
+      <a class="sidebar-item" routerLink="/app/members" routerLinkActive="active">
+        <span class="material-icons">people</span> Members
+      </a>
+    }
+ 
+   
+    @if (hasRole('MEMBER','ADMIN','LOAN_OFFICER','BRANCH_MANAGER','AUDITOR')) {
+      <div class="sidebar-section">Loans</div>
+    }
+    @if (hasRole('MEMBER','LOAN_OFFICER','ADMIN')) {
+      <a class="sidebar-item" routerLink="/app/loans/apply" routerLinkActive="active">
+        <span class="material-icons">add_card</span> Apply for Loan
+      </a>
+    }
+    @if (hasRole('LOAN_OFFICER','BRANCH_MANAGER','ADMIN','AUDITOR')) {
+      <a class="sidebar-item" routerLink="/app/loans/pending" routerLinkActive="active">
+        <span class="material-icons">pending_actions</span> Pending Loans
+      </a>
+      <a class="sidebar-item" routerLink="/app/loans" routerLinkActive="active">
+        <span class="material-icons">list_alt</span> All Loans
+      </a>
+    }
+ 
+   
+    @if (hasRole('LOAN_OFFICER','ADMIN','AUDITOR')) {
+      <div class="sidebar-section">Repayments</div>
+      @if (hasRole('LOAN_OFFICER','ADMIN')) {
+        <a class="sidebar-item" routerLink="/app/repayments" routerLinkActive="active">
+          <span class="material-icons">payment</span> Make Repayment
+        </a>
+      }
+      <a class="sidebar-item" routerLink="/app/repayments/history" routerLinkActive="active">
+        <span class="material-icons">history</span> Repayment History
+      </a>
+      @if (hasRole('LOAN_OFFICER','ADMIN')) {
+        <a class="sidebar-item" routerLink="/app/delinquencies" routerLinkActive="active">
+          <span class="material-icons">warning</span> Mark Delinquent
+        </a>
+        <a class="sidebar-item" routerLink="/app/delinquencies/history" routerLinkActive="active">
+          <span class="material-icons">report</span> Delinquencies
+        </a>
+      }
+    }
+ 
+   
+    @if (hasRole('TELLER','ADMIN','BRANCH_MANAGER','MEMBER')) {
+      <div class="sidebar-section">Transactions</div>
+      @if (hasRole('TELLER','ADMIN')) {
+        <a class="sidebar-item" routerLink="/app/transactions/deposit" routerLinkActive="active">
+          <span class="material-icons">savings</span> Deposit
+        </a>
+        <a class="sidebar-item" routerLink="/app/transactions/withdraw" routerLinkActive="active">
+          <span class="material-icons">money_off</span> Withdraw
+        </a>
+      }
+      <a class="sidebar-item" routerLink="/app/transactions/balance" routerLinkActive="active">
+        <span class="material-icons">account_balance_wallet</span> Balance
+      </a>
+    }
+    @if (hasRole('TELLER','ADMIN','BRANCH_MANAGER','AUDITOR','MEMBER')) {
+      <a class="sidebar-item" routerLink="/app/transactions/history" routerLinkActive="active">
+        <span class="material-icons">receipt_long</span> Transactions
+      </a>
+    }
+ 
+   
+    @if (hasRole('BRANCH_MANAGER','ADMIN','AUDITOR','LOAN_OFFICER')) {
+      <ng-container *ngIf="hasRole('BRANCH_MANAGER','ADMIN','AUDITOR','LOAN_OFFICER')">
+   
+    @if (hasRole('BRANCH_MANAGER','ADMIN','AUDITOR')) {
+              <div class="sidebar-section">Reporting</div>
+       <a class="sidebar-item" routerLink="/app/reports/kpi" routerLinkActive="active">
+<span class="material-icons">bar_chart</span> KPI Dashboard
+</a>
+      }
+     
+      @if (hasRole('BRANCH_MANAGER','ADMIN','AUDITOR')) {
+        <a class="sidebar-item" routerLink="/app/reports" routerLinkActive="active">
+          <span class="material-icons">assessment</span> Reports
+        </a>
+      }
+      @if (hasRole('AUDITOR','ADMIN','BRANCH_MANAGER')) {
+        <a class="sidebar-item" routerLink="/app/audit-packages" routerLinkActive="active">
+          <span class="material-icons">inventory_2</span> Audit Packages
+        </a>
+      }
+      </ng-container>
+    }
+ 
+   
+    @if (hasRole('ADMIN')) {
+      <div class="sidebar-section">Administration</div>
+      <a class="sidebar-item" routerLink="/app/users" routerLinkActive="active">
+        <span class="material-icons">manage_accounts</span> Users
+      </a>
+      <a class="sidebar-item" routerLink="/app/audit-logs" routerLinkActive="active">
+        <span class="material-icons">security</span> Audit Logs
+      </a>
+    }
+ 
+   
+    @if (hasRole('AUDITOR')) {
+      <div class="sidebar-section">Compliance</div>
+      <a class="sidebar-item" routerLink="/app/audit-logs" routerLinkActive="active">
+        <span class="material-icons">security</span> Audit Logs
+      </a>
+    }
+ 
+  </nav>
+</aside>
+ 
+ 
+<header class="header">
+  <div class="header-left">
+    <button class="hamburger-btn" (click)="toggleSidebar()">
+    <span class="material-icons">menu</span>
+  </button>
+    <h2 style="font-size:16px;color:var(--gray-800)">
+      {{ getPageTitle() }}
+    </h2>
+  </div>
+  <div class="header-right">
+ 
+   
+    @if (hasRole('MEMBER')) {
+      <div style="position:relative">
+        <button class="header-icon-btn" (click)="toggleNotifications($event)">
+          <span class="material-icons">notifications</span>
+          @if (unreadCount > 0) {
+            <span class="badge-count">{{ unreadCount }}</span>
+          }
+        </button>
+        @if (showNotifications) {
+          <div class="dropdown-panel">
+            <div class="dropdown-header">
+              Notifications
+              <span style="font-size:12px;color:var(--gray-400)">
+                {{ unreadCount }} unread
+              </span>
+            </div>
+            @if (notifications.length === 0) {
+              <div class="empty-state" style="padding:24px">
+                <span class="material-icons">notifications_none</span>
+                <p>No notifications</p>
+              </div>
+            }
+            @for (n of notifications; track n.notificationId) {
+              <div class="notification-item"
+                   [class.unread]="n.status === 'UNREAD'"
+                   (click)="markRead(n)">
+                <div class="notification-msg">{{ n.message }}</div>
+                <div style="display:flex;gap:6px;margin-top:4px">
+                  <span class="badge"
+                        [class.badge-primary]="n.status === 'UNREAD'"
+                        [class.badge-gray]="n.status === 'READ'"
+                        style="font-size:11px">
+                    {{ n.status }}
+                  </span>
+                  <span style="font-size:11px;color:var(--gray-400)">
+                    {{ n.category }}
+                  </span>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+ 
+   
+    @if (hasRole('LOAN_OFFICER')) {
+      <div style="position:relative">
+        <button class="header-icon-btn" (click)="toggleTasks($event)">
+          <span class="material-icons">task</span>
+          @if (pendingTaskCount > 0) {
+            <span class="badge-count">{{ pendingTaskCount }}</span>
+          }
+        </button>
+        @if (showTasks) {
+          <div class="dropdown-panel">
+            <div class="dropdown-header">
+              My Tasks
+              <span style="font-size:12px;color:var(--gray-400)">
+                {{ pendingTaskCount }} pending
+              </span>
+            </div>
+            @if (tasks.length === 0) {
+              <div class="empty-state" style="padding:24px">
+                <span class="material-icons">task_alt</span>
+                <p>No tasks assigned</p>
+              </div>
+            }
+            @for (t of tasks; track t.taskId) {
+              <div class="task-item" (click)="t.expanded = !t.expanded">
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                  <span class="badge"
+                        [class.badge-warning]="t.status === 'PENDING'"
+                        [class.badge-primary]="t.status === 'IN_PROGRESS'"
+                        [class.badge-success]="t.status === 'COMPLETED'">
+                    {{ t.status }}
+                  </span>
+                  <span style="font-size:11px;color:var(--gray-400)">
+                    Due: {{ t.dueDate }}
+                  </span>
+                </div>
+                <div style="font-size:13px;margin-top:4px">{{ t.description }}</div>
+                @if (t.expanded) {
+                  <div style="margin-top:8px;padding:8px;background:var(--gray-50);
+                              border-radius:4px;font-size:12px;color:var(--gray-600)">
+                    Related Entity ID: {{ t.relatedEntityId }}
+                  </div>
+                }
+                @if (t.status !== 'COMPLETED') {
+                  <button class="btn btn-sm btn-success" style="margin-top:6px"
+                          (click)="completeTask(t, $event)">
+                    <span class="material-icons" style="font-size:14px">check</span> Done
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+ 
+   
+    <div class="user-avatar" [title]="auth.getDisplayName()">
+      {{ auth.getInitials() }}
+    </div>
+    <div class="user-info">
+      <span class="user-name">{{ auth.getDisplayName() }}</span>
+      <span class="user-role">{{ auth.getRole() }}</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" (click)="logout()">
+      <span class="material-icons" style="font-size:18px">logout</span>
+    </button>
+ 
+  </div>
+</header>
+ 
+ 
+<main class="main-content">
+  <router-outlet>
+  </router-outlet>
+</main>

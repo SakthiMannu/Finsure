@@ -1,0 +1,94 @@
+<div>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Member Registry</h1>
+      <p class="page-subtitle">Manage cooperative bank members</p>
+    </div>
+    @if (hasRole('TELLER', 'ADMIN')) {
+      <a routerLink="/app/members/new" class="btn btn-primary">
+        <span class="material-icons">person_add</span> Register Member
+      </a>
+    }
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">All Members ({{ filtered.length }})</span>
+      <input class="form-control" style="max-width:240px"
+             [(ngModel)]="searchTerm"
+             (ngModelChange)="filter()"
+             placeholder="Search by name...">
+    </div>
+
+    @if (loading) {
+      <div class="loading-container">
+        <div class="spinner"></div>
+        <p>Loading members...</p>
+      </div>
+    }
+
+    @if (error) {
+      <div class="alert alert-danger">
+        <span class="material-icons">error_outline</span> {{ error }}
+      </div>
+    }
+
+    @if (!loading && !error) {
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Date of Birth</th>
+              <th>Contact</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (m of filtered; track m.memberId) {
+              <tr>
+                <td><strong>#{{ m.memberId }}</strong></td>
+                <td>{{ m.name }}</td>
+                <td>{{ m.dob }}</td>
+                <td>{{ m.contactInfo }}</td>
+                <td>
+                  <span class="badge"
+                        [class.badge-success]="m.status === 'ACTIVE'"
+                        [class.badge-danger]="m.status !== 'ACTIVE'">
+                    {{ m.status }}
+                  </span>
+                </td>
+                <td>
+                  <div class="action-btns">
+                    <button class="btn btn-sm btn-outline"
+                            [routerLink]="['/app/members', m.memberId, 'account']">
+                      <span class="material-icons" style="font-size:16px">visibility</span>
+                      View
+                    </button>
+                    @if (hasRole('TELLER', 'ADMIN')) {
+                      <button class="btn btn-sm btn-ghost"
+                              [routerLink]="['/app/members/edit', m.memberId]">
+                        <span class="material-icons" style="font-size:16px">edit</span>
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+            @if (filtered.length === 0) {
+              <tr>
+                <td colspan="6" class="text-center"
+                    style="padding:32px;color:var(--gray-400)">
+                  No members found
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+  </div>
+</div>

@@ -1,0 +1,63 @@
+<div>
+  <div class="page-header">
+    <h1 class="page-title">Delinquency Records</h1>
+    @if (hasRole('LOAN_OFFICER', 'ADMIN')) {
+      <a routerLink="/app/delinquencies" class="btn btn-danger">
+        <span class="material-icons">warning</span> Mark Delinquent
+      </a>
+    }
+  </div>
+  <div class="card">
+    <div class="search-bar">
+      <input type="number" class="form-control" [(ngModel)]="loanId" placeholder="Enter Loan ID">
+      <button class="btn btn-primary" (click)="search()">
+        <span class="material-icons">search</span> Search
+      </button>
+    </div>
+    @if (loading) { <div class="loading-container"><div class="spinner"></div></div> }
+    @if (error) { <div class="alert alert-danger">{{ error }}</div> }
+    @if (records.length > 0) {
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Loan ID</th><th>Status</th>
+              <th>Notes</th><th>Detected At</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (d of records; track d.delinqId) {
+              <tr>
+                <td>#{{ d.delinqId }}</td>
+                <td>#{{ d.loanId }}</td>
+                <td>
+                  <span class="badge"
+                        [class.badge-danger]="d.status === 'DELINQUENT'"
+                        [class.badge-success]="d.status === 'RESOLVED'">
+                    {{ d.status }}
+                  </span>
+                </td>
+                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                  {{ d.notes }}
+                </td>
+                <td>{{ d.detectedAt | date:'short' }}</td>
+                <td>
+                  <a [routerLink]="['/app/delinquencies', d.delinqId]"
+                     class="btn btn-sm btn-outline">
+                    <span class="material-icons" style="font-size:16px">visibility</span> View
+                  </a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+    @if (records.length === 0 && searched) {
+      <div class="empty-state">
+        <span class="material-icons">check_circle</span>
+        <p>No delinquency records for this loan</p>
+      </div>
+    }
+  </div>
+</div>

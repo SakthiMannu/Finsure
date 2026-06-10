@@ -1,0 +1,70 @@
+.auth-page {
+  display: flex;
+  min-height: 100vh;
+}
+
+.auth-left {
+  flex: 1;
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent) 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 48px;
+  color: white;
+}
+
+.auth-brand h1 {
+  font-size: 36px;
+  margin: 12px 0 8px;
+  color: white;
+}
+
+.auth-brand p {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 16px;
+  max-width: 320px;
+}
+
+.auth-features {
+  margin-top: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-feature {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 15px;
+}
+
+.auth-feature .material-icons {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.auth-right {
+  width: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: var(--gray-50);
+}
+
+.auth-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 36px;
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 400px;
+}
+
+@media (max-width: 768px) {
+  .auth-left  { display: none; }
+  .auth-right { width: 100%; }
+}

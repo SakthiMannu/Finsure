@@ -1,0 +1,88 @@
+<div style="max-width:480px;margin:0 auto">
+
+  <div class="page-header">
+    <h1 class="page-title">Check Balance</h1>
+  </div>
+
+  <div class="card">
+
+    @if (loadingAccounts) {
+      <div class="loading-container"><div class="spinner"></div></div>
+    }
+
+    
+    @if (auth.hasRole('MEMBER') && !loadingAccounts && memberAccounts.length === 0 && !error) {
+      <div style="text-align:center;padding:32px">
+        <span class="material-icons" style="font-size:48px;color:var(--gray-300)">
+          account_balance_wallet
+        </span>
+        <h3 style="color:var(--gray-600);margin:12px 0 8px">No Account Found</h3>
+        <p style="color:var(--gray-400);font-size:14px">
+          You do not have a bank account linked yet.
+          Please visit your branch to open an account.
+        </p>
+      </div>
+    }
+
+    
+    @if (auth.hasRole('MEMBER') && !loadingAccounts && memberAccounts.length > 0) {
+      <div class="form-group">
+        <label class="form-label">Select Your Account</label>
+        <select class="form-control" [(ngModel)]="selectedAccountId">
+          <option [ngValue]="null">-- Select Account --</option>
+          @for (a of memberAccounts; track a.accountId) {
+            <option [ngValue]="a.accountId">
+              Account #{{ a.accountId }} — {{ a.type }}
+              ({{ a.balance | currency:'INR':'symbol':'1.2-2' }})
+            </option>
+          }
+        </select>
+      </div>
+      <button class="btn btn-primary"
+              (click)="checkBalance()"
+              [disabled]="loading || !selectedAccountId">
+        <span class="material-icons">search</span>
+        {{ loading ? 'Checking...' : 'Check Balance' }}
+      </button>
+    }
+
+    
+    @if (!auth.hasRole('MEMBER') && !loadingAccounts) {
+      <div class="search-bar">
+        <input type="number" class="form-control"
+               [(ngModel)]="accountId" placeholder="Enter Account ID" min="1">
+        <button class="btn btn-primary" (click)="checkBalance()" [disabled]="loading">
+          <span class="material-icons">search</span>
+          {{ loading ? 'Checking...' : 'Check' }}
+        </button>
+      </div>
+    }
+
+    @if (error) {
+      <div class="alert alert-danger" style="margin-top:16px">
+        <span class="material-icons">error_outline</span> {{ error }}
+      </div>
+    }
+
+    @if (balanceFetched) {
+      <div style="text-align:center;padding:32px;background:var(--primary-light);
+                  border-radius:var(--radius-md);margin-top:16px">
+        <div style="font-size:13px;color:var(--gray-600);margin-bottom:8px">
+          Account #{{ displayAccountId }} — Current Balance
+        </div>
+        <div style="font-size:42px;font-weight:700;color:var(--primary);
+                    font-family:'Poppins',sans-serif">
+          &#8377;{{ balance | number:'1.2-2' }}
+        </div>
+        <div style="margin-top:16px">
+          <a [routerLink]="['/app/transactions/history']"
+             [queryParams]="{accountId: displayAccountId}"
+             class="btn btn-outline btn-sm">
+            <span class="material-icons">receipt_long</span> View Transactions
+          </a>
+        </div>
+      </div>
+    }
+
+  </div>
+</div>

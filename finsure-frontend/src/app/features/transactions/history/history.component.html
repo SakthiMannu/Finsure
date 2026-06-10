@@ -1,0 +1,117 @@
+<div>
+  <div class="page-header">
+    <h1 class="page-title">Transaction History</h1>
+    @if (hasRole('TELLER', 'ADMIN')) {
+      <div style="display:flex;gap:10px">
+        <a routerLink="/app/transactions/deposit" class="btn btn-success btn-sm">
+          <span class="material-icons">savings</span> Deposit
+        </a>
+        <a routerLink="/app/transactions/withdraw" class="btn btn-outline btn-sm">
+          <span class="material-icons">money_off</span> Withdraw
+        </a>
+      </div>
+    }
+  </div>
+
+  <div class="card">
+
+    @if (loadingAccounts) {
+      <div class="loading-container"><div class="spinner"></div></div>
+    }
+
+    
+    @if (hasRole('MEMBER') && !loadingAccounts && memberAccounts.length === 0) {
+      <div style="text-align:center;padding:40px">
+        <span class="material-icons" style="font-size:48px;color:var(--gray-300)">receipt_long</span>
+        <h3 style="color:var(--gray-600);margin:12px 0 8px">No Account Found</h3>
+        <p style="color:var(--gray-400);font-size:14px">
+          You do not have a bank account linked yet.
+          Please visit your branch to open an account.
+        </p>
+      </div>
+    }
+
+    
+    @if (hasRole('MEMBER') && !loadingAccounts && memberAccounts.length > 0) {
+      <div class="form-group">
+        <label class="form-label">Select Your Account</label>
+        <select class="form-control"
+                [(ngModel)]="selectedAccountId"
+                (ngModelChange)="onAccountSelect($event)">
+          <option [ngValue]="null">-- Select Account --</option>
+          @for (a of memberAccounts; track a.accountId) {
+            <option [ngValue]="a.accountId">
+              Account #{{ a.accountId }} — {{ a.type }}
+            </option>
+          }
+        </select>
+      </div>
+    }
+
+    
+    @if (!hasRole('MEMBER') && !loadingAccounts) {
+      <div class="search-bar">
+        <input type="number" class="form-control"
+               [(ngModel)]="accountId" placeholder="Enter Account ID" min="1">
+        <button class="btn btn-primary" (click)="search()" [disabled]="loading">
+          <span class="material-icons">search</span> View History
+        </button>
+      </div>
+    }
+
+    @if (loading) {
+      <div class="loading-container"><div class="spinner"></div></div>
+    }
+
+    @if (error) {
+      <div class="alert alert-danger">{{ error }}</div>
+    }
+
+    @if (transactions.length > 0) {
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Performed By</th>
+              <th>Date & Time</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of transactions; track t.txnId) {
+              <tr>
+                <td>#{{ t.txnId }}</td>
+                <td>
+                  <span class="badge"
+                        [class.badge-success]="t.type === 'DEPOSIT'"
+                        [class.badge-danger]="t.type === 'WITHDRAWAL'">
+                    {{ t.type }}
+                  </span>
+                </td>
+                <td style="font-weight:600"
+                    [class.text-success]="t.type === 'DEPOSIT'"
+                    [class.text-danger]="t.type === 'WITHDRAWAL'">
+                  {{ t.type === 'DEPOSIT' ? '+' : '-' }}&#8377;{{ t.amount | number:'1.2-2' }}
+                </td>
+                <td>{{ t.performedBy }}</td>
+                <td>{{ t.performedAt | date:'short' }}</td>
+                <td><span class="badge badge-success">{{ t.status }}</span></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    @if (transactions.length === 0 && searched && !loading) {
+      <div class="empty-state">
+        <span class="material-icons">receipt_long</span>
+        <p>No transactions found for this account</p>
+      </div>
+    }
+
+  </div>
+</div>

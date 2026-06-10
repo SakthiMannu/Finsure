@@ -1,0 +1,189 @@
+<div>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Loan Review & Approval</h1>
+      @if (loan) {
+        <p class="page-subtitle">
+          Loan #{{ loan.loanId }} — {{ loan.purpose }}
+          @if (loan.customPurpose) {
+             ({{ loan.customPurpose }}) 
+            }
+        </p>
+      }
+    </div>
+    <a routerLink="/app/loans/pending" class="btn btn-ghost">
+      <span class="material-icons">arrow_back</span> Back
+    </a>
+  </div>
+ 
+  @if (success) {
+    <div class="alert alert-success">
+      <span class="material-icons">check_circle</span> {{ successMsg }}
+    </div>
+  }
+  @if (error) {
+    <div class="alert alert-danger">
+      <span class="material-icons">error_outline</span> {{ error }}
+    </div>
+  }
+ 
+  @if (loading && !loan) {
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <p>Loading loan details...</p>
+    </div>
+  }
+ 
+  @if (loan) {
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+ 
+     
+      <div class="card">
+
+        <div class="card-header">
+            <span class="card-title">Loan Details</span>
+            <span class="badge"
+                  [class.badge-warning]="loan.status === 'PENDING'"
+                  [class.badge-success]="loan.status === 'APPROVED'"
+                  [class.badge-danger]="loan.status === 'REJECTED'"
+                  [class.badge-gray]="loan.status === 'CLOSED'">
+              {{ loan.status }}
+            </span>
+        </div>
+ 
+        <div style="display:flex;flex-direction:column;gap:12px">
+          @for (row of loanRows(); track row.label) {
+            @if (row.value) {
+              <div style="display:flex;justify-content:space-between;
+                          padding:10px 0;border-bottom:1px solid var(--gray-100)">
+                <span class="text-muted">{{ row.label }}</span>
+                <strong [style.color]="row.color || ''">{{ row.value }}</strong>
+              </div>
+            }
+          }
+        </div>
+ 
+       
+        @if (loan.status === 'PENDING' && hasRole('LOAN_OFFICER', 'ADMIN')) {
+          <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--gray-100)">
+ 
+            @if (documents.length === 0) {
+              <div class="alert alert-warning"
+                   style="margin-bottom:12px;font-size:13px">
+                <span class="material-icons" style="font-size:16px">warning</span>
+                No documents uploaded. You can still approve but documents are recommended.
+              </div>
+            }
+ 
+            <div class="form-group">
+              <label class="form-label">Processed By</label>
+              <input class="form-control" [(ngModel)]="approvedBy"
+                     placeholder="Your name / officer ID">
+            </div>
+ 
+            @if (showRejectReason) {
+              <div class="form-group">
+                <label class="form-label">Rejection Reason *</label>
+                <textarea class="form-control" [(ngModel)]="rejectReason"
+                          rows="3"
+                          placeholder="State the reason for rejection...">
+                </textarea>
+              </div>
+            }
+ 
+            <div style="display:flex;gap:10px">
+              <button class="btn btn-success"
+                      (click)="approveLoan()"
+                      [disabled]="loading || !approvedBy">
+                <span class="material-icons">check_circle</span>
+                {{ loading ? 'Processing...' : 'Approve' }}
+              </button>
+              <button class="btn btn-danger"
+                      (click)="toggleReject()"
+                      [disabled]="loading">
+                <span class="material-icons">cancel</span>
+                {{ showRejectReason ? 'Confirm Reject' : 'Reject' }}
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+ 
+     
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Loan Documents</span>
+         
+@if (hasRole('TELLER', 'ADMIN', 'MEMBER', 'LOAN_OFFICER')
+     && loan.status === 'PENDING') {
+  <button class="btn btn-sm btn-outline"
+          (click)="showUpload = !showUpload">
+    <span class="material-icons">upload_file</span> Upload
+  </button>
+}
+        </div>
+ 
+        @if (showUpload) {
+  <div style="background:var(--gray-50);padding:16px;
+              border-radius:var(--radius-sm);margin-bottom:16px">
+    <div class="form-group">
+      <label class="form-label">Select PDF Document</label>
+      <input type="file"
+             accept=".pdf"
+             class="form-control"
+             (change)="onFileSelected($event)">
+      @if (selectedFileName) {
+        <small style="color:var(--success);font-size:12px">
+          Selected: {{ docUri }}
+        </small>
+      }
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary btn-sm"
+              (click)="uploadDocument()"
+              [disabled]="!selectedFileName">
+        Upload
+      </button>
+      <button class="btn btn-ghost btn-sm"
+              (click)="showUpload = false; selectedFileName = ''">
+        Cancel
+      </button>
+    </div>
+  </div>
+}
+        @if (documents.length === 0) {
+          <div class="empty-state">
+            <span class="material-icons">folder_open</span>
+            <p>No documents uploaded yet</p>
+            <p style="font-size:12px;color:var(--gray-400)">
+              Upload supporting documents for this loan application
+            </p>
+          </div>
+        }
+ 
+        @for (doc of documents; track doc.docId) {
+          <div style="display:flex;align-items:center;justify-content:space-between;
+                      padding:12px;border:1px solid var(--gray-100);
+                      border-radius:var(--radius-sm);margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="material-icons" style="color:var(--accent)">description</span>
+              <div>
+                <div style="font-size:13px;font-weight:500">{{ doc.fileURI }}</div>
+                <div style="font-size:11px;color:var(--gray-400)">
+                  Uploaded: {{ doc.uploadedAt }}
+                </div>
+              </div>
+            </div>
+            <span class="badge"
+                  [class.badge-warning]="doc.status === 'PENDING'"
+                  [class.badge-success]="doc.status === 'VERIFIED'"
+                  [class.badge-danger]="doc.status === 'REJECTED'">
+              {{ doc.status }}
+            </span>
+          </div>
+        }
+      </div>
+ 
+    </div>
+  }
+</div>

@@ -1,0 +1,194 @@
+<div>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">KPI Dashboard</h1>
+      <p class="page-subtitle">Key Performance Indicators</p>
+    </div>
+    @if (hasRole('BRANCH_MANAGER', 'ADMIN')) {
+      <button class="btn btn-accent" (click)="showCalcMenu = !showCalcMenu">
+        <span class="material-icons">calculate</span> Calculate
+      </button>
+    }
+  </div>
+
+  
+  @if (showCalcMenu) {
+    <div style="background:white;border:1px solid var(--gray-200);
+                border-radius:var(--radius-md);padding:16px;
+                margin-bottom:16px;max-width:360px;box-shadow:var(--shadow-md)">
+      <p style="font-size:13px;color:var(--gray-600);margin-bottom:12px">
+        Calculate KPI from real backend data:
+      </p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <button class="btn btn-sm btn-outline" (click)="calculateKpi('LOANS')">Loans</button>
+        <button class="btn btn-sm btn-outline" (click)="calculateKpi('ACCOUNTS')">Accounts</button>
+        <button class="btn btn-sm btn-outline" (click)="calculateKpi('TRANSACTIONS')">Transactions</button>
+      </div>
+      @if (calcMessage) {
+        <div class="alert alert-success" style="margin-top:10px;padding:8px 12px;font-size:13px">
+          {{ calcMessage }}
+        </div>
+      }
+    </div>
+  }
+
+  
+  <div class="tabs">
+    <div class="tab" [class.active]="filter === ''"            (click)="setFilter('')">All</div>
+    <div class="tab" [class.active]="filter === 'LOANS'"       (click)="setFilter('LOANS')">Loans</div>
+    <div class="tab" [class.active]="filter === 'ACCOUNTS'"    (click)="setFilter('ACCOUNTS')">Accounts</div>
+    <div class="tab" [class.active]="filter === 'TRANSACTIONS'" (click)="setFilter('TRANSACTIONS')">Transactions</div>
+  </div>
+
+  
+  @if (kpis.length > 0) {
+    <div class="stats-grid" style="margin-bottom:20px">
+      <div class="stat-card">
+        <div class="stat-label">Total KPIs</div>
+        <div class="stat-value" style="color:var(--primary)">{{ filtered.length }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">On Target</div>
+        <div class="stat-value" style="color:var(--success)">{{ countByStatus('On Target') }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Below Target</div>
+        <div class="stat-value" style="color:var(--warning)">{{ countByStatus('Below Target') }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Critical</div>
+        <div class="stat-value" style="color:var(--danger)">{{ countByStatus('Critical') }}</div>
+      </div>
+    </div>
+  }
+
+  
+  @if (showForm) {
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header">
+        <span class="card-title">Edit KPI — {{ form.name }}</span>
+        <button class="btn btn-ghost btn-sm" (click)="cancelForm()">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+      @if (formError) {
+        <div class="alert alert-danger">{{ formError }}</div>
+      }
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">KPI Name *</label>
+          <input class="form-control" [(ngModel)]="form.name" placeholder="e.g. Loan Approval Rate">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category *</label>
+          <select class="form-control" [(ngModel)]="form.category">
+            <option value="LOANS">Loans</option>
+            <option value="ACCOUNTS">Accounts</option>
+            <option value="TRANSACTIONS">Transactions</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Definition</label>
+        <textarea class="form-control" [(ngModel)]="form.definition"
+                  rows="2" placeholder="Describe what this KPI measures">
+        </textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Target Value</label>
+          <input type="number" class="form-control" [(ngModel)]="form.target">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Current Value</label>
+          <input type="number" class="form-control" [(ngModel)]="form.currentValue">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-ghost" (click)="cancelForm()">Cancel</button>
+        <button class="btn btn-primary" (click)="saveKpi()" [disabled]="saving">
+          {{ saving ? 'Saving...' : 'Update KPI' }}
+        </button>
+      </div>
+    </div>
+  }
+
+  
+  @if (loading) {
+    <div class="loading-container"><div class="spinner"></div></div>
+  }
+
+  @if (!loading) {
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+
+      @for (k of filtered; track k.kpiId) {
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <div style="flex:1;margin-right:12px">
+              <h3 style="font-size:15px;margin-bottom:4px">{{ k.name }}</h3>
+              <p style="font-size:12px;color:var(--gray-400)">{{ k.definition }}</p>
+            </div>
+            <span class="badge"
+                  [class.badge-blue]="k.category === 'LOANS'"
+                  [class.badge-green]="k.category === 'ACCOUNTS'"
+                  [class.badge-orange]="k.category === 'TRANSACTIONS'">
+              {{ k.category }}
+            </span>
+          </div>
+
+          
+          <div style="margin:12px 0">
+            <div style="display:flex;justify-content:space-between;font-size:12px;
+                        color:var(--gray-600);margin-bottom:4px">
+              @if (k.category === 'LOANS') {
+                <span>{{ k.currentValue }}% / {{ k.target }}%</span>
+              } @else {
+                <span>{{ k.currentValue }} / {{ k.target }}</span>
+              }
+              <span>{{ getProgress(k) }}%</span>
+            </div>
+            <div style="height:6px;background:var(--gray-200);border-radius:3px;overflow:hidden">
+              <div [style.width]="getProgress(k) + '%'"
+                   [style.background]="getProgressColor(k)"
+                   style="height:100%;border-radius:3px;transition:width 0.3s ease">
+              </div>
+            </div>
+          </div>
+
+          
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="badge"
+                  [class.badge-success]="getStatus(k) === 'On Target'"
+                  [class.badge-warning]="getStatus(k) === 'Below Target'"
+                  [class.badge-danger]="getStatus(k) === 'Critical'">
+              {{ getStatus(k) }}
+            </span>
+            <div style="display:flex;gap:6px">
+              @if (hasRole('BRANCH_MANAGER', 'ADMIN')) {
+                <button class="btn btn-ghost btn-icon btn-sm"
+                        (click)="editKpi(k)" title="Edit KPI">
+                  <span class="material-icons" style="font-size:16px">edit</span>
+                </button>
+              }
+              @if (hasRole('ADMIN')) {
+                <button class="btn btn-ghost btn-icon btn-sm"
+                        (click)="deleteKpi(k.kpiId)" title="Delete KPI"
+                        style="color:var(--danger)">
+                  <span class="material-icons" style="font-size:16px">delete</span>
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (filtered.length === 0) {
+        <div class="card empty-state">
+          <span class="material-icons">bar_chart</span>
+          <p>No KPIs found. Click Calculate to generate KPIs.</p>
+        </div>
+      }
+
+    </div>
+  }
+</div>

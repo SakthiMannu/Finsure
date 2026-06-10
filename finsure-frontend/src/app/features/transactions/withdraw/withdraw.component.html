@@ -1,0 +1,73 @@
+<div style="max-width:560px;margin:0 auto">
+
+  <div class="page-header">
+    <h1 class="page-title">Withdraw Money</h1>
+    <a routerLink="/app/transactions/history" class="btn btn-ghost">
+      <span class="material-icons">receipt_long</span> History
+    </a>
+  </div>
+
+  <div class="card">
+
+    @if (errorMsg) {
+      <div class="alert alert-danger">
+        <span class="material-icons">error_outline</span> {{ errorMsg }}
+      </div>
+    }
+
+    @if (!result) {
+      <form (ngSubmit)="onWithdraw()">
+        <div class="form-group">
+          <label class="form-label">Account ID *</label>
+          <input type="number" class="form-control"
+                 [(ngModel)]="accountId" name="accountId"
+                 placeholder="Enter account ID" min="1" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Amount (Rs.) *</label>
+          <input type="number" class="form-control"
+                 [(ngModel)]="amount" name="amount"
+                 placeholder="Enter amount" min="1" max="1000000" required>
+          <small style="color:var(--gray-400);font-size:12px;margin-top:4px;display:block">
+            Min: &#8377;1 &nbsp;|&nbsp; Max: &#8377;10,00,000 per transaction
+          </small>
+        </div>
+        <button type="submit" class="btn btn-primary w-full"
+                style="justify-content:center;padding:12px" [disabled]="loading">
+          <span class="material-icons">money_off</span>
+          {{ loading ? 'Processing...' : 'Withdraw Money' }}
+        </button>
+      </form>
+    }
+
+    @if (result) {
+      <div style="background:var(--success-light);padding:20px;
+                  border-radius:var(--radius-md);border:1px solid var(--success)">
+        <h3 style="color:var(--success);margin-bottom:12px">Withdrawal Successful!</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div>
+            <div style="font-size:12px">Transaction ID</div>
+            <strong>#{{ result.txnId }}</strong>
+          </div>
+          <div>
+            <div style="font-size:12px">Amount</div>
+            <strong>&#8377;{{ result.amount | number:'1.2-2' }}</strong>
+          </div>
+          <div>
+            <div style="font-size:12px">Status</div>
+            <span class="badge badge-success">{{ result.status }}</span>
+          </div>
+          <div>
+            <div style="font-size:12px">Time</div>
+            <strong>{{ result.performedAt | date:'short' }}</strong>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-outline btn-sm" (click)="reset()">New Withdrawal</button>
+          <a routerLink="/app/transactions/history" class="btn btn-primary btn-sm">View History</a>
+        </div>
+      </div>
+    }
+
+  </div>
+</div>

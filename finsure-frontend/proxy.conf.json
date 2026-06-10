@@ -1,0 +1,57 @@
+{
+  "/auth": {
+    "target": "http://localhost:8079",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/users": {
+    "target": "http://localhost:8079",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/audit": {
+    "target": "http://localhost:8079",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/members": {
+    "target": "http://localhost:8079",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/accounts": {
+    "target": "http://localhost:8079",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/loans": {
+    "target": "http://localhost:8079",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/loan-approval": {
+    "target": "http://localhost:8079",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/api": {
+    "target": "http://localhost:8079",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/reports": {
+    "target": "http://localhost:8079",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/kpi": {
+    "target": "http://localhost:8079",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/audit-packages": {
+    "target": "http://localhost:8079",
+    "secure": false,
+    "changeOrigin": true
+  }
+}

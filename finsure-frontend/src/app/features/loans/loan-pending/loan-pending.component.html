@@ -1,0 +1,73 @@
+<div>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Pending Loan Applications</h1>
+      <p class="page-subtitle">{{ loans.length }} applications awaiting review</p>
+    </div>
+    <a routerLink="/app/loans" class="btn btn-ghost">
+      <span class="material-icons">list_alt</span> All Loans
+    </a>
+  </div>
+
+  @if (loading) {
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <p>Loading...</p>
+    </div>
+  }
+
+  @if (loans.length === 0 && !loading) {
+    <div class="card empty-state">
+      <span class="material-icons">task_alt</span>
+      <p>No pending loan applications. All caught up!</p>
+    </div>
+  }
+
+  @if (!loading) {
+    <div style="display:flex;flex-direction:column;gap:12px">
+      @for (l of loans; track l.loanId) {
+        <div class="card" style="cursor:pointer"
+             [routerLink]="['/app/loans/review', l.loanId]">
+             
+          <div style="display:flex;align-items:center;justify-content:space-between">
+
+            <div style="display:flex;align-items:center;gap:16px">
+
+              <div style="width:48px;height:48px;background:var(--warning-light);
+                          border-radius:12px;display:flex;align-items:center;
+                          justify-content:center">
+                <span class="material-icons" style="color:var(--warning)">
+                  pending_actions
+                </span>
+              </div>
+
+              <div>
+                <h3 style="font-size:15px;margin-bottom:2px">
+                  Loan #{{ l.loanId }} — {{ l.purpose }}
+                </h3>
+                <p style="color:var(--gray-400);font-size:13px">
+                  Member #{{ l.memberId }} &middot; Applied {{ l.submittedAt }}
+                </p>
+              </div>
+
+            </div>
+
+            <div style="display:flex;align-items:center;gap:16px">
+              <div style="text-align:right">
+                <div style="font-size:18px;font-weight:700;color:var(--primary)">
+                  {{ l.amount | currency:'INR':'symbol':'1.2-2' }}
+                </div>
+                <span class="badge badge-warning">{{ l.status }}</span>
+              </div>
+              <span class="material-icons" style="color:var(--gray-400)">
+                arrow_forward_ios
+              </span>
+            </div>
+
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+</div>

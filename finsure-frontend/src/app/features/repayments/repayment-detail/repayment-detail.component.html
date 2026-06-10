@@ -1,0 +1,83 @@
+<div style="max-width:600px;margin:0 auto">
+  <div class="page-header">
+    <h1 class="page-title">Repayment Detail</h1>
+    <a routerLink="/app/repayments/history" class="btn btn-ghost">
+      <span class="material-icons">arrow_back</span> Back
+    </a>
+  </div>
+  @if (loading) { <div class="loading-container"><div class="spinner"></div></div> }
+  @if (repayment) {
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Repayment #{{ repayment.repaymentId }}</span>
+        <span class="badge badge-success">{{ repayment.status }}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100)">
+          <span class="text-muted">Repayment ID</span><strong>#{{ repayment.repaymentId }}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100)">
+          <span class="text-muted">Loan ID</span><strong>#{{ repayment.loanId }}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100)">
+          <span class="text-muted">Amount</span>
+          <strong style="font-size:18px;color:var(--success)">
+            &#8377;{{ repayment.amount | number:'1.2-2' }}
+          </strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100)">
+          <span class="text-muted">Method</span>
+          <span class="badge badge-blue">{{ repayment.method }}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0">
+          <span class="text-muted">Paid At</span>
+          <strong>{{ repayment.paidAt | date:'medium' }}</strong>
+        </div>
+      </div>
+      @if (showEdit && hasRole('TELLER', 'ADMIN')) {
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--gray-100)">
+          <h4 style="margin-bottom:12px;font-size:15px">Edit Repayment</h4>
+          <div class="form-group">
+            <label class="form-label">Amount</label>
+            <input type="number" class="form-control" [(ngModel)]="editAmount">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Method</label>
+              <select class="form-control" [(ngModel)]="editMethod">
+                <option value="ONLINE">Online</option>
+                <option value="CASH">Cash</option>
+                <option value="CHEQUE">Cheque</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <select class="form-control" [(ngModel)]="editStatus">
+                <option value="PAID">PAID</option>
+                <option value="PENDING">PENDING</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-primary btn-sm" (click)="updateRepayment()">Update</button>
+            <button class="btn btn-ghost btn-sm" (click)="showEdit = false">Cancel</button>
+          </div>
+          @if (editError) {
+            <div class="alert alert-danger" style="margin-top:10px">{{ editError }}</div>
+          }
+          @if (editSuccess) {
+            <div class="alert alert-success" style="margin-top:10px">Updated successfully!</div>
+          }
+        </div>
+      }
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
+        @if (hasRole('TELLER', 'ADMIN')) {
+          <button class="btn btn-outline" (click)="toggleEdit()">
+            <span class="material-icons">edit</span>
+            {{ showEdit ? 'Cancel Edit' : 'Edit' }}
+          </button>
+        }
+      </div>
+    </div>
+  }
+</div>

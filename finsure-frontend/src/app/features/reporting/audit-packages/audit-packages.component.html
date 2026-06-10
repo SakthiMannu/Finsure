@@ -1,0 +1,141 @@
+<div>
+  <div class="page-header">
+    <h1 class="page-title">Audit Packages</h1>
+  </div>
+
+  <div class="tabs">
+    @if (hasRole('AUDITOR', 'ADMIN')) {
+      <div class="tab" [class.active]="tab === 0" (click)="tab = 0">
+        Generate Package
+      </div>
+    }
+    <div class="tab" [class.active]="tab === 1" (click)="tab = 1; loadPackages()">
+      All Packages
+    </div>
+  </div>
+
+  
+  @if (tab === 0 && hasRole('AUDITOR', 'ADMIN')) {
+    <div class="card" style="max-width:520px">
+      <div class="card-header">
+        <span class="card-title">Generate Audit Package</span>
+      </div>
+      @if (genSuccess) {
+        <div class="alert alert-success">
+          <span class="material-icons">check_circle</span> {{ genSuccess }}
+        </div>
+      }
+      @if (genError) {
+        <div class="alert alert-danger">
+          <span class="material-icons">error_outline</span> {{ genError }}
+        </div>
+      }
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Period Start *</label>
+          <input type="datetime-local" class="form-control" [(ngModel)]="periodStart">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Period End *</label>
+          <input type="datetime-local" class="form-control" [(ngModel)]="periodEnd">
+        </div>
+      </div>
+      @if (periodStart && periodEnd && periodEnd <= periodStart) {
+        <div class="form-error">Period End must be after Period Start</div>
+      }
+      <button class="btn btn-primary"
+              (click)="generatePackage()"
+              [disabled]="generating || (periodStart && periodEnd && periodEnd <= periodStart)">
+        <span class="material-icons">inventory_2</span>
+        {{ generating ? 'Generating...' : 'Generate Audit Package' }}
+      </button>
+    </div>
+  }
+
+  
+  @if (tab === 1) {
+    <div class="card">
+      @if (loading) { <div class="loading-container"><div class="spinner"></div></div> }
+      @if (!loading) {
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Package ID</th><th>Period</th><th>Generated At</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of packages; track p.packageId) {
+                <tr (click)="selectedPackage = selectedPackage?.packageId === p.packageId ? null : p"
+                    style="cursor:pointer"
+                    [style.background]="selectedPackage?.packageId === p.packageId ? 'var(--primary-light)' : ''">
+                  <td>#{{ p.packageId }}</td>
+                  <td>{{ p.periodStart | date:'shortDate' }} → {{ p.periodEnd | date:'shortDate' }}</td>
+                  <td>{{ p.generatedAt | date:'short' }}</td>
+                  <td>
+                    @if (hasRole('ADMIN')) {
+                      <button class="btn btn-danger btn-sm"
+                              (click)="deletePackage(p.packageId, $event)">
+                        <span class="material-icons" style="font-size:16px">delete</span>
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+              @if (packages.length === 0) {
+                <tr>
+                  <td colspan="4" class="text-center"
+                      style="padding:32px;color:var(--gray-400)">
+                    No audit packages yet
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+
+    
+    @if (selectedPackage) {
+      <div class="card" style="margin-top:16px">
+        <div class="card-header">
+          <span class="card-title">Package #{{ selectedPackage.packageId }}</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm"
+                    (click)="downloadAuditPdf(selectedPackage)">
+              <span class="material-icons">picture_as_pdf</span> Download PDF
+            </button>
+            <button class="btn btn-ghost btn-sm" (click)="selectedPackage = null">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+        </div>
+        <p style="font-size:13px;color:var(--gray-400);margin-bottom:16px">
+          Period: {{ selectedPackage.periodStart | date:'medium' }}
+          → {{ selectedPackage.periodEnd | date:'medium' }}
+        </p>
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:var(--gray-50)">
+              <th style="padding:10px;text-align:left;font-size:12px;color:var(--gray-600);
+                         border-bottom:1px solid var(--gray-200);width:40%">Category</th>
+              <th style="padding:10px;text-align:left;font-size:12px;color:var(--gray-600);
+                         border-bottom:1px solid var(--gray-200)">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (m of formatContents(selectedPackage.contentsJSON); track m.key) {
+              <tr style="border-bottom:1px solid var(--gray-100)">
+                <td style="padding:10px;font-weight:500;font-size:13px">{{ m.key }}</td>
+                <td style="padding:10px;font-size:13px;color:var(--accent);font-family:monospace">
+                  {{ m.value }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+</div>

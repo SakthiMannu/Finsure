@@ -1,0 +1,89 @@
+<div style="max-width:560px;margin:0 auto">
+  <div class="page-header">
+    <h1 class="page-title">Make Repayment</h1>
+    <a routerLink="/app/repayments/history" class="btn btn-ghost">
+      <span class="material-icons">history</span> History
+    </a>
+  </div>
+  <div class="card">
+    @if (success) {
+      <div class="alert alert-success">
+        <span class="material-icons">check_circle</span>
+        Payment of &#8377;{{ lastAmount }} received successfully! Method: {{ lastMethod }}
+      </div>
+    }
+    @if (error) {
+      <div class="alert alert-danger">
+        <span class="material-icons">error_outline</span> {{ error }}
+      </div>
+    }
+    <form (ngSubmit)="onSubmit()">
+      <div class="form-group">
+        <label class="form-label">Loan ID *</label>
+        <input type="number" class="form-control" [(ngModel)]="loanId" name="loanId"
+               placeholder="Enter loan ID" required (ngModelChange)="onLoanIdChange($event)">
+      </div>
+      @if (loanLoading) {
+        <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px">Fetching loan details...</p>
+      }
+      @if (loanInfo) {
+        <div style="background:var(--gray-50);border:1.5px solid var(--gray-200);
+                    border-radius:var(--radius-md);padding:14px;margin-bottom:16px">
+          <div style="font-size:13px;font-weight:600;color:var(--gray-600);margin-bottom:10px">
+            Loan Summary
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center">
+            <div>
+              <div style="font-size:11px;color:var(--gray-400);margin-bottom:2px">Loan Amount</div>
+              <div style="font-size:15px;font-weight:700;color:var(--primary)">
+                &#8377;{{ loanInfo.amount | number:'1.2-2' }}
+              </div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--gray-400);margin-bottom:2px">Monthly EMI</div>
+              <div style="font-size:15px;font-weight:700;color:var(--accent)">
+                &#8377;{{ monthlyEmi | number:'1.2-2' }}
+              </div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--gray-400);margin-bottom:2px">Total Repayable</div>
+              <div style="font-size:15px;font-weight:700;color:var(--success)">
+                &#8377;{{ totalRepayable | number:'1.2-2' }}
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+      <div class="form-group">
+        <label class="form-label">Amount (Rs.) *</label>
+        <input type="number" class="form-control" [(ngModel)]="amount" name="amount"
+               placeholder="Enter amount" min="1" required>
+        @if (monthlyEmi) {
+          <small style="color:var(--gray-400);font-size:12px">
+            Suggested EMI: &#8377;{{ monthlyEmi | number:'1.2-2' }}
+          </small>
+        }
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Payment Method *</label>
+          <select class="form-control" [(ngModel)]="method" name="method" required>
+            <option value="ONLINE">Online Transfer</option>
+            <option value="CASH">Cash</option>
+            <option value="CHEQUE">Cheque</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <input class="form-control" value="PAID" disabled>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px">
+        <button type="submit" class="btn btn-success" [disabled]="loading">
+          <span class="material-icons">payment</span>
+          {{ loading ? 'Processing...' : 'Submit Payment' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

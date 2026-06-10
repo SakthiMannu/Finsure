@@ -1,0 +1,113 @@
+<div>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">All Loan Applications</h1>
+      <p class="page-subtitle">{{ loans.length }} total applications</p>
+    </div>
+    @if (hasRole('TELLER', 'ADMIN')) {
+      <a routerLink="/app/loans/apply" class="btn btn-primary">
+        <span class="material-icons">add_card</span> New Application
+      </a>
+    }
+  </div>
+
+  
+  <div class="tabs">
+    <div class="tab" [class.active]="filterStatus === ''"
+         (click)="setFilter('')">All</div>
+
+    <div class="tab" [class.active]="filterStatus === 'PENDING'"
+         (click)="setFilter('PENDING')">
+      Pending
+      <span class="badge badge-warning" style="margin-left:4px">
+        {{ countByStatus('PENDING') }}
+      </span>
+    </div>
+
+    <div class="tab" [class.active]="filterStatus === 'APPROVED'"
+         (click)="setFilter('APPROVED')">
+      Approved
+      <span class="badge badge-success" style="margin-left:4px">
+        {{ countByStatus('APPROVED') }}
+      </span>
+    </div>
+    
+    <div class="tab" [class.active]="filterStatus === 'REJECTED'"
+         (click)="setFilter('REJECTED')">
+      Rejected
+      <span class="badge badge-danger" style="margin-left:4px">
+        {{ countByStatus('REJECTED') }}
+      </span>
+    </div>
+  </div>
+
+  <div class="card">
+
+    @if (loading) {
+      <div class="loading-container">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+      </div>
+    }
+
+    @if (error) {
+      <div class="alert alert-danger">
+        <span class="material-icons">error_outline</span> {{ error }}
+      </div>
+    }
+
+    @if (!loading) {
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Loan ID</th>
+              <th>Member ID</th>
+              <th>Amount</th>
+              <th>Purpose</th>
+              <th>Status</th>
+              <th>Applied</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of filtered; track l.loanId) {
+              <tr>
+                <td><strong>#{{ l.loanId }}</strong></td>
+                <td>#{{ l.memberId }}</td>
+                <td>{{ l.amount | currency:'INR':'symbol':'1.2-2'  }}</td>
+                <td>{{ l.purpose }}</td>
+                <td>
+                  <span class="badge"
+                        [class.badge-warning]="l.status === 'PENDING'"
+                        [class.badge-success]="l.status === 'APPROVED'"
+                        [class.badge-danger]="l.status === 'REJECTED'"
+                        [class.badge-gray]="l.status === 'CLOSED'">
+                    {{ l.status }}
+                  </span>
+                </td>
+                <td>{{ l.submittedAt }}</td>
+                <td>
+                  <a [routerLink]="['/app/loans/review', l.loanId]"
+                     class="btn btn-sm btn-outline">
+                    <span class="material-icons" style="font-size:16px">visibility</span>
+                    View
+                  </a>
+                </td>
+              </tr>
+            }
+            @if (filtered.length === 0) {
+              <tr>
+                <td colspan="7" class="text-center"
+                    style="padding:32px;color:var(--gray-400)">
+                  No loans found
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+  </div>
+</div>

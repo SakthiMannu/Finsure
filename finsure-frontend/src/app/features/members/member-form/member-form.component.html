@@ -1,0 +1,63 @@
+<div style="max-width:640px;margin:0 auto">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">{{ isEdit ? 'Edit Member' : 'Register New Member' }}</h1>
+      <p class="page-subtitle">
+        {{ isEdit ? 'Update member details' : 'Add a new cooperative bank member' }}
+      </p>
+    </div>
+    <a routerLink="/app/members" class="btn btn-ghost">
+      <span class="material-icons">arrow_back</span> Back
+    </a>
+  </div>
+
+  <div class="card">
+
+    @if (success) {
+      <div class="alert alert-success">
+        <span class="material-icons">check_circle</span>
+        Member {{ isEdit ? 'updated' : 'registered' }} successfully!
+      </div>
+    }
+
+    @if (error) {
+      <div class="alert alert-danger">
+        <span class="material-icons">error_outline</span> {{ error }}
+      </div>
+    }
+
+    <form (ngSubmit)="onSubmit()">
+
+      <div class="form-group">
+        <label class="form-label">Full Name *</label>
+        <input class="form-control" [(ngModel)]="name" name="name"
+               placeholder="Enter full name" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Date of Birth *</label>
+        <input type="date" class="form-control"
+               [(ngModel)]="dob" name="dob" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Contact Number *</label>
+        <input class="form-control" [(ngModel)]="contactInfo" name="contactInfo"
+               placeholder="10-digit mobile number" maxlength="10" required>
+        @if (contactInfo && contactInfo.length !== 10) {
+          <div class="form-error">Must be exactly 10 digits</div>
+        }
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px">
+        <a routerLink="/app/members" class="btn btn-ghost">Cancel</a>
+        <button type="submit" class="btn btn-primary" [disabled]="loading">
+          <span class="material-icons">{{ isEdit ? 'save' : 'person_add' }}</span>
+          {{ loading ? 'Saving...' : (isEdit ? 'Update Member' : 'Register Member') }}
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>
